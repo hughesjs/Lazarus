@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Lazarus/Lazarus.csproj" Type="Classic C#" />
+  <Project Path="Lazarus.Tests/Lazarus.Tests.csproj" Type="Classic C#" />
+</Solution>
