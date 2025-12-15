@@ -76,7 +76,9 @@ jobs:
           dotnet-quality: "preview"
 
       - name: Run Unit Tests
-        run: dotnet test --no-restore --no-build -c Release ./build/Lazarus.Tests.Unit/Lazarus.Tests.Unit.csproj
+        timeout-minutes: 5
+        working-directory: ./build/Lazarus.Tests.Unit/bin/Release/net10.0
+        run: dotnet Lazarus.Tests.Unit.dll
 
   package:
     name: Package Pre-release

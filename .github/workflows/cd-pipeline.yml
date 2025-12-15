@@ -79,7 +79,7 @@ jobs:
 
       - name: Build Test Project
         working-directory: src
-        run: dotnet build Lazarus.Tests/Lazarus.Tests.csproj --output ./build-test --configuration Release
+        run: dotnet build Lazarus.Tests.Unit/Lazarus.Tests.Unit.csproj --output ./build-test --configuration Release
 
       - name: Upload Test Artifact
         uses: actions/upload-artifact@v4
@@ -111,8 +111,9 @@ jobs:
           path: ./build
 
       - name: Run unit tests
+        timeout-minutes: 5
         working-directory: ./build
-        run: dotnet vstest Lazarus.Tests.dll
+        run: dotnet Lazarus.Tests.Unit.dll
 
   publish-release:
     name: Publish Release
