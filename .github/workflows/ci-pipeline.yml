@@ -8,6 +8,10 @@ on:
       - ".github/workflows/ci-pipeline.yml"
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-main:
     name: Build Solution
@@ -108,6 +112,7 @@ jobs:
         run: dotnet pack ./Lazarus/Lazarus.csproj --no-build --no-restore -o ./artifacts -p:Version=${{ needs.build-main.outputs.version }}
 
       - name: Publish to GitHub Packages
+        if: github.event.pull_request.head.repo.fork == false
         working-directory: ./build
         run: |
           dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
