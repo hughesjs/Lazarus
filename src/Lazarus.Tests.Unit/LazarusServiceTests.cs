@@ -1,16 +1,17 @@
 using Lazarus.Internal.Service;
 using Lazarus.Internal.Watchdog;
-using Microsoft.Extensions.Logging;
+using Lazarus.Public;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Lazarus.Tests.Unit;
 
-public class LazarusServiceTests : IDisposable
+public class LazarusServiceTests : IAsyncDisposable
 {
-    private readonly TestService _ts;
+    private readonly LazarusService<TestService> _ts;
+    private readonly TestService _innerService;
     private readonly FakeTimeProvider _tp;
-    private readonly IWatchdogService<LazarusService> _watchdog;
+    private readonly IWatchdogService<IResilientService> _watchdog;
     private readonly CancellationToken _ctx;
 
     private readonly TimeSpan _loopTime = TimeSpan.FromSeconds(5);
@@ -18,8 +19,14 @@ public class LazarusServiceTests : IDisposable
     public LazarusServiceTests()
     {
         _tp = new();
-        _watchdog = new InMemoryWatchdogService<LazarusService>(_tp);
-        _ts = new(_loopTime, NullLogger<TestService>.Instance, _tp, _watchdog);
+        _watchdog = new InMemoryWatchdogService<IResilientService>(_tp);
+        _innerService = new();
+        _ts = new(
+            _loopTime,
+            NullLogger<LazarusService<TestService>>.Instance,
+            _tp,
+            _watchdog,
+            _innerService);
         _ctx = TestContext.Current?.Execution.CancellationToken?? CancellationToken.None;
     }
 
@@ -30,7 +37,7 @@ public class LazarusServiceTests : IDisposable
         for (int i = 0; i < 10; i++)
         {
             await AdvanceTime();
-            await Assert.That(_ts.Counter).IsEqualTo(i);
+            await Assert.That(_innerService.Counter).IsEqualTo(i);
         }
     }
 
@@ -38,7 +45,7 @@ public class LazarusServiceTests : IDisposable
     public async Task DoesntCatchFireIfInnerLoopThrows()
     {
         await _ts.StartAsync(_ctx);
-        _ts.CatchFire();
+        _innerService.CatchFire();
         await AdvanceTime();
 
         await Assert.That(_ts.ExecuteTask!).IsNotFaulted();
@@ -58,18 +65,18 @@ public class LazarusServiceTests : IDisposable
     [Test]
     public async Task ContinuesLoopingAfterException()
     {
-        _ts.CatchFire();
+        _innerService.CatchFire();
         await _ts.StartAsync(_ctx);
         await AdvanceTime(); // First loop throws after delay
 
-        await Assert.That(_ts.Counter).IsEqualTo(0);
+        await Assert.That(_innerService.Counter).IsEqualTo(0);
 
-        _ts.StopCatchingFire();
+        _innerService.StopCatchingFire();
         await AdvanceTime(); // Waits for delay, then succeeds
-        await Assert.That(_ts.Counter).IsEqualTo(1);
+        await Assert.That(_innerService.Counter).IsEqualTo(1);
 
         await AdvanceTime();
-        await Assert.That(_ts.Counter).IsEqualTo(2);
+        await Assert.That(_innerService.Counter).IsEqualTo(2);
     }
 
     [Test]
@@ -80,7 +87,7 @@ public class LazarusServiceTests : IDisposable
         _tp.Advance(_loopTime - TimeSpan.FromMilliseconds(1));
         await Task.Delay(100, _ctx);
 
-        await Assert.That(_ts.Counter).IsEqualTo(0); // No loop has run yet
+        await Assert.That(_innerService.Counter).IsEqualTo(0); // No loop has run yet
     }
 
     [Test]
@@ -91,11 +98,11 @@ public class LazarusServiceTests : IDisposable
 
         await _ts.StopAsync(_ctx);
 
-        int counterAfterStop = _ts.Counter;
+        int counterAfterStop = _innerService.Counter;
         _tp.Advance(_loopTime * 5);
         await Task.Delay(100, _ctx); // Give it a chance to (incorrectly) run
 
-        await Assert.That(_ts.Counter).IsEqualTo(counterAfterStop);
+        await Assert.That(_innerService.Counter).IsEqualTo(counterAfterStop);
     }
 
     [Test]
@@ -104,24 +111,23 @@ public class LazarusServiceTests : IDisposable
         await _ts.StartAsync(_ctx);
 
         await AdvanceTime();
-        DateTimeOffset? firstHeartbeat = _watchdog.GetLastHeartbeat(_ts);
+        DateTimeOffset? firstHeartbeat = _watchdog.GetLastHeartbeat(_innerService);
         await Assert.That(firstHeartbeat).IsNotNull();
 
         await AdvanceTime();
-        DateTimeOffset? secondHeartbeat = _watchdog.GetLastHeartbeat(_ts);
+        DateTimeOffset? secondHeartbeat = _watchdog.GetLastHeartbeat(_innerService);
         await Assert.That(secondHeartbeat!).IsNotEqualTo(firstHeartbeat);
     }
 
-    private class TestService : LazarusService
+    private class TestService : IResilientService
     {
-        private readonly SemaphoreSlim _loopSignal;
+        private readonly SemaphoreSlim _loopSignal = new(1);
         private bool _shouldThrow;
 
         public int Counter { get; private set; }
+        public string Name => "TestService";
 
-        public TestService(TimeSpan loopDelay, ILogger<LazarusService> logger, TimeProvider timeProvider, IWatchdogService<LazarusService> watchdog) : base(loopDelay, logger, timeProvider, watchdog) => _loopSignal = new(1);
-
-        protected override Task PerformLoop(CancellationToken cancellationToken)
+        public Task PerformLoop(CancellationToken cancellationToken)
         {
             if (_shouldThrow)
             {
@@ -145,7 +151,11 @@ public class LazarusServiceTests : IDisposable
 
         public void StopCatchingFire() => _shouldThrow = false;
 
-        public override void Dispose() => _loopSignal.Dispose();
+        public async ValueTask DisposeAsync()
+        {
+            _loopSignal.Dispose();
+            await Task.CompletedTask;
+        }
     }
 
     private class DeliberateException(string message) : Exception(message);
@@ -153,13 +163,13 @@ public class LazarusServiceTests : IDisposable
     private async Task AdvanceTime()
     {
         _tp.Advance(_loopTime);
-        await Task.Delay(100); // Give thread pool time to schedule continuation
-        await _ts.WaitForLoopAsync(_ctx);
+        await Task.Delay(100, _ctx); // Give thread pool time to schedule continuation
+        await _innerService.WaitForLoopAsync(_ctx);
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        _ts.Dispose();
+        await _ts.DisposeAsync();
         GC.SuppressFinalize(this);
     }
 }

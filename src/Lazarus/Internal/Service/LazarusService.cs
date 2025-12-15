@@ -1,23 +1,26 @@
 using Lazarus.Internal.Watchdog;
+using Lazarus.Public;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Lazarus.Internal.Service;
 
-internal abstract class LazarusService : BackgroundService
+internal class LazarusService<TInnerService> : BackgroundService, IAsyncDisposable where  TInnerService : class, IResilientService
 {
     private readonly TimeSpan _loopDelay;
-    private readonly ILogger<LazarusService> _logger;
+    private readonly ILogger<LazarusService<TInnerService>> _logger;
     private readonly TimeProvider _timeProvider;
-    private readonly IWatchdogService<LazarusService> _watchdogService;
+    private readonly IWatchdogService<IResilientService> _watchdogService;
+    private readonly TInnerService _innerService;
 
 
-    protected LazarusService(TimeSpan loopDelay, ILogger<LazarusService> logger, TimeProvider timeProvider, IWatchdogService<LazarusService> watchdogService)
+    internal LazarusService(TimeSpan loopDelay, ILogger<LazarusService<TInnerService>> logger, TimeProvider timeProvider, IWatchdogService<IResilientService> watchdogService, TInnerService innerService)
     {
         _loopDelay = loopDelay;
         _logger = logger;
         _timeProvider = timeProvider;
         _watchdogService = watchdogService;
+        _innerService = innerService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -27,7 +30,7 @@ internal abstract class LazarusService : BackgroundService
             // Still heartbeat even if we're faulting
             try
             {
-                _watchdogService.RegisterHeartbeat(this);
+                _watchdogService.RegisterHeartbeat(_innerService);
             }
             catch (Exception e)
             {
@@ -37,8 +40,8 @@ internal abstract class LazarusService : BackgroundService
             try
             {
                 await Task.Delay(_loopDelay, _timeProvider, cancellationToken);
-                _logger.LogDebug("Performing iteration in lazarus service ({Name})", CustomName);
-                await PerformLoop(cancellationToken);
+                _logger.LogDebug("Performing iteration in lazarus service ({Name})", _innerService.Name);
+                await _innerService.PerformLoop(cancellationToken);
 
             }
             catch (OperationCanceledException e) when (cancellationToken.IsCancellationRequested)
@@ -53,7 +56,5 @@ internal abstract class LazarusService : BackgroundService
         }
     }
 
-    protected abstract Task PerformLoop(CancellationToken cancellationToken);
-
-    protected virtual string CustomName => "Unnamed";
+    public async ValueTask DisposeAsync() => await _innerService.DisposeAsync();
 }
