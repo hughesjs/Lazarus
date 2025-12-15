@@ -27,7 +27,7 @@ public class LazarusServiceTests : IDisposable
         for (int i = 0; i < 10; i++)
         {
             await AdvanceTime();
-            await Assert.That(_ts.Counter).IsEqualTo(i + 1);
+            await Assert.That(_ts.Counter).IsEqualTo(i);
         }
     }
 
@@ -56,43 +56,41 @@ public class LazarusServiceTests : IDisposable
     public async Task ContinuesLoopingAfterException()
     {
         _ts.CatchFire();
-        _ = _ts.StartAsync(CancellationToken.None);
-        await _ts.WaitForLoopAsync(); // First loop throws immediately
+        await _ts.StartAsync(_ctx);
+        await AdvanceTime(); // First loop throws after delay
 
         await Assert.That(_ts.Counter).IsEqualTo(0);
 
         _ts.StopCatchingFire();
-        await _ts.WaitForLoopAsync(); // Retries immediately after exception, now succeeds
+        await AdvanceTime(); // Waits for delay, then succeeds
         await Assert.That(_ts.Counter).IsEqualTo(1);
 
-        await AdvanceTime(); // Wait for delay, then next loop runs
-        await AdvanceTime(); // Wait for next iteration
-        await Assert.That(_ts.Counter).IsEqualTo(3);
+        await AdvanceTime();
+        await Assert.That(_ts.Counter).IsEqualTo(2);
     }
 
     [Test]
-    public async Task DoesNotRunSecondLoopBeforeDelayElapsed()
+    public async Task DoesNotRunLoopBeforeDelayElapsed()
     {
-        _ = _ts.StartAsync(CancellationToken.None);
-        await _ts.WaitForLoopAsync(); // First loop runs immediately
+        await _ts.StartAsync(_ctx);
 
         _tp.Advance(_loopTime - TimeSpan.FromMilliseconds(1));
         await Task.Delay(10, _ctx);
 
-        await Assert.That(_ts.Counter).IsEqualTo(1); // Still just 1, second loop hasn't run
+        await Assert.That(_ts.Counter).IsEqualTo(0); // No loop has run yet
     }
 
     [Test]
     public async Task StopAsyncStopsService()
     {
-        _ = _ts.StartAsync(CancellationToken.None);
+        await _ts.StartAsync(_ctx);
         await AdvanceTime();
 
-        await _ts.StopAsync(CancellationToken.None);
+        await _ts.StopAsync(_ctx);
 
         int counterAfterStop = _ts.Counter;
         _tp.Advance(_loopTime * 5);
-        await Task.Delay(10); // Give it a chance to (incorrectly) run
+        await Task.Delay(10, _ctx); // Give it a chance to (incorrectly) run
 
         await Assert.That(_ts.Counter).IsEqualTo(counterAfterStop);
     }
@@ -104,7 +102,7 @@ public class LazarusServiceTests : IDisposable
 
         public int Counter { get; private set; }
 
-        public TestService(TimeSpan loopDelay, ILogger<LazarusService> logger, TimeProvider timeProvider) : base(loopDelay, logger, timeProvider) => _loopSignal = new(0);
+        public TestService(TimeSpan loopDelay, ILogger<LazarusService> logger, TimeProvider timeProvider) : base(loopDelay, logger, timeProvider) => _loopSignal = new(1);
 
         protected override Task PerformLoop(CancellationToken cancellationToken)
         {
@@ -119,7 +117,7 @@ public class LazarusServiceTests : IDisposable
             return Task.CompletedTask;
         }
 
-        public async Task WaitForLoopAsync() => await _loopSignal.WaitAsync();
+        public async Task WaitForLoopAsync(CancellationToken ctx) => await _loopSignal.WaitAsync(ctx);
 
         public void CatchFire() => _shouldThrow = true;
 
@@ -131,7 +129,7 @@ public class LazarusServiceTests : IDisposable
     private async Task AdvanceTime()
     {
         _tp.Advance(_loopTime);
-        await _ts.WaitForLoopAsync();
+        await _ts.WaitForLoopAsync(_ctx);
     }
 
     public void Dispose()

@@ -23,9 +23,9 @@ internal abstract class LazarusService : BackgroundService
         {
             try
             {
+                await Task.Delay(_loopDelay, _timeProvider, cancellationToken);
                 _logger.LogDebug("Performing iteration in lazarus service ({Name})", CustomName);
                 await PerformLoop(cancellationToken);
-                await Task.Delay(_loopDelay, _timeProvider, cancellationToken);
             }
             catch (OperationCanceledException e) when (cancellationToken.IsCancellationRequested)
             {
