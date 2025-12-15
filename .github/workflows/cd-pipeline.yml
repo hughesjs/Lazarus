@@ -99,13 +99,13 @@ jobs:
           dotnet-quality: "preview"
 
       - name: Download built library
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: build-output
           path: ./build
 
       - name: Download built tests
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: test-build-output
           path: ./build
@@ -152,7 +152,7 @@ jobs:
           writeToFile: false
 
       - name: Download Package Artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: package-output
           path: ./src/build/artifacts
@@ -176,7 +176,7 @@ jobs:
       - run-tests
     steps:
       - name: Download Package Artifact
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: package-output
           path: ./src/build/artifacts
