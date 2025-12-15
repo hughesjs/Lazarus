@@ -57,7 +57,7 @@ jobs:
         run: dotnet build Lazarus.slnx -c Release -p:Version=${{ steps.sanitize_version.outputs.sanitized_version }}
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: build-output
           path: ./src
