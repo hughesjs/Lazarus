@@ -34,7 +34,11 @@ internal abstract class LazarusService : BackgroundService
             {
                 _logger.LogError(e, "Exception in Lazarus service loop, continuing");
             }
-            await Task.Delay(_loopDelay, _timeProvider,  cancellationToken);
+
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(_loopDelay, _timeProvider,  cancellationToken);
+            }
         }
     }
 
