@@ -76,7 +76,7 @@ jobs:
           dotnet-quality: "preview"
 
       - name: Run Unit Tests
-        run: dotnet test --no-restore --no-build -c Release ./build/Lazarus.Tests/Lazarus.Tests.csproj
+        run: dotnet test --no-restore --no-build -c Release ./build/Lazarus.Tests.Unit/Lazarus.Tests.Unit.csproj
 
   package:
     name: Package Pre-release
