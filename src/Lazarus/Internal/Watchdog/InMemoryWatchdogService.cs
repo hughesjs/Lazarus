@@ -16,6 +16,8 @@ internal class InMemoryWatchdogService<TKey>: IWatchdogService<TKey> where TKey 
     public void RegisterHeartbeat(TKey key)
     {
         DateTimeOffset currentTime = _timeProvider.GetUtcNow();
+
+        // This is needed to ensure that we're resilient to time-skew
         _lastHeartbeats.AddOrUpdate(
             key,
             currentTime,
