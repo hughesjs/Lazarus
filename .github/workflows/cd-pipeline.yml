@@ -12,6 +12,7 @@ on:
 permissions:
   contents: write
   packages: write
+  id-token: write
 
 jobs:
   build-main:
@@ -96,7 +97,6 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0.x"
-          dotnet-quality: "preview"
 
       - name: Download built library
         uses: actions/download-artifact@v7
@@ -185,7 +185,7 @@ jobs:
         run: |
           dotnet nuget add source "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json" \
           --name github \
-          --username "USERNAME" \
+          --username "username" \
           --password ${{ secrets.GITHUB_TOKEN }} \
           --store-password-in-clear-text
 
@@ -193,11 +193,17 @@ jobs:
             --source github \
             --api-key ${{ secrets.GITHUB_TOKEN }}
 
+      - name: NuGet login (OIDC → temp API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
       - name: Publish to NuGet.org
         run: |
           dotnet nuget push "./src/build/artifacts/*.nupkg" \
             --source https://api.nuget.org/v3/index.json \
-            --api-key ${{ secrets.NUGET_API_KEY }}
+            --api-key ${{steps.login.outputs.NUGET_API_KEY}}
 
   cleanup-pre-release-builds:
     name: Delete Old Pre-Releases
