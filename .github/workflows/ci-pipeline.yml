@@ -82,7 +82,7 @@ jobs:
       - name: Run Unit Tests
         timeout-minutes: 5
         working-directory: ./build/Lazarus.Tests.Unit/bin/Release/net10.0
-        run: dotnet Lazarus.Tests.Unit.dll --minimum-expected-tests 0
+        run: dotnet Lazarus.Tests.Unit.dll
 
   architecture-tests:
     name: Run Architecture Tests
@@ -104,7 +104,7 @@ jobs:
       - name: Run Architecture Tests
         timeout-minutes: 5
         working-directory: ./build/Lazarus.Tests.Architecture/bin/Release/net10.0
-        run: dotnet Lazarus.Tests.Architecture.dll --minimum-expected-tests 0
+        run: dotnet Lazarus.Tests.Architecture.dll
 
   healthchecks-tests:
     name: Run HealthChecks Tests
@@ -126,7 +126,7 @@ jobs:
       - name: Run HealthChecks Tests
         timeout-minutes: 5
         working-directory: ./build/Lazarus.Extensions.HealthChecks.Tests/bin/Release/net10.0
-        run: dotnet Lazarus.Extensions.HealthChecks.Tests.dll --minimum-expected-tests 0
+        run: dotnet Lazarus.Extensions.HealthChecks.Tests.dll
 
   healthchecks-architecture-tests:
     name: Run HealthChecks Architecture Tests
@@ -148,7 +148,7 @@ jobs:
       - name: Run HealthChecks Architecture Tests
         timeout-minutes: 5
         working-directory: ./build/Lazarus.Extensions.HealthChecks.Tests.Architecture/bin/Release/net10.0
-        run: dotnet Lazarus.Extensions.HealthChecks.Tests.Architecture.dll --minimum-expected-tests 0
+        run: dotnet Lazarus.Extensions.HealthChecks.Tests.Architecture.dll
 
   package:
     name: Package Pre-release
