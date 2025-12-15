@@ -23,7 +23,7 @@ public class LazarusServiceTests : IDisposable
     [Test]
     public async Task RunsInnerLoop()
     {
-        _ = _ts.StartAsync(_ctx);
+        await _ts.StartAsync(_ctx);
         for (int i = 0; i < 10; i++)
         {
             _tp.Advance(_loopTime);
@@ -35,7 +35,7 @@ public class LazarusServiceTests : IDisposable
     [Test]
     public async Task DoesntCatchFireIfInnerLoopThrows()
     {
-        _ = _ts.StartAsync(_ctx);
+        await _ts.StartAsync(_ctx);
         _ts.CatchFire();
         _tp.Advance(_loopTime);
         await _ts.WaitForLoopAsync();
