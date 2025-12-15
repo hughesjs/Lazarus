@@ -1,40 +1,44 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace Lazarus.Internal;
+namespace Lazarus.Internal.Service;
 
 internal abstract class LazarusService : BackgroundService
 {
     private readonly TimeSpan _loopDelay;
     private readonly ILogger<LazarusService> _logger;
+    private readonly TimeProvider _timeProvider;
 
 
-    protected LazarusService(TimeSpan loopDelay, ILogger<LazarusService> logger)
+    protected LazarusService(TimeSpan loopDelay, ILogger<LazarusService> logger, TimeProvider timeProvider)
     {
         _loopDelay = loopDelay;
         _logger = logger;
+        _timeProvider = timeProvider;
     }
 
-    public override Task StartAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                PerformLoop(cancellationToken);
+                _logger.LogDebug("Performing iteration in lazarus service ({Name})", CustomName);
+                await PerformLoop(cancellationToken);
             }
             catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogInformation(ex,  "Cancellation of Lazarus service requested");
+                _logger.LogInformation(ex, "Cancellation of Lazarus service requested");
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "Exception in Lazarus service loop, continuing");
             }
+            await Task.Delay(_loopDelay, _timeProvider,  cancellationToken);
         }
-
-        return Task.CompletedTask;
     }
 
     protected abstract Task PerformLoop(CancellationToken cancellationToken);
+
+    protected virtual string CustomName => "Unnamed";
 }

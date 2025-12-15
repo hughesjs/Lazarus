@@ -134,9 +134,9 @@ dotnet_style_prefer_simplified_interpolation = true:warning
 [*.{cs,csx,cake}]
 # Implicit and explicit types
 # https://docs.microsoft.com/visualstudio/ide/editorconfig-language-conventions#implicit-and-explicit-types
-csharp_style_var_for_built_in_types = true:warning
-csharp_style_var_when_type_is_apparent = true:warning
-csharp_style_var_elsewhere = true:warning
+csharp_style_var_for_built_in_types = false:warning
+csharp_style_var_when_type_is_apparent = false:warning
+csharp_style_var_elsewhere = false:warning
 # Expression-bodied members
 # https://docs.microsoft.com/visualstudio/ide/editorconfig-language-conventions#expression-bodied-members
 csharp_style_expression_bodied_methods = true:warning
@@ -274,7 +274,7 @@ dotnet_diagnostic.CA1827.severity = error
 dotnet_diagnostic.CA1829.severity = suggestion
 dotnet_diagnostic.CA1834.severity = error
 dotnet_diagnostic.CA1845.severity = suggestion
-dotnet_diagnostic.CA1848.severity = suggestion
+dotnet_diagnostic.CA1848.severity = none
 dotnet_diagnostic.CA1852.severity = suggestion
 dotnet_diagnostic.CA1860.severity = suggestion
 dotnet_diagnostic.CA2016.severity = suggestion
@@ -347,7 +347,7 @@ dotnet_diagnostic.IDE0200.severity = suggestion
 dotnet_diagnostic.IDE1006.severity = suggestion
 dotnet_diagnostic.IDE0260.severity = suggestion
 dotnet_diagnostic.IDE0270.severity = suggestion
-dotnet_diagnostic.IDE0290.severity = error
+dotnet_diagnostic.IDE0290.severity = none
 dotnet_diagnostic.IDE0300.severity = suggestion
 dotnet_diagnostic.IDE0305.severity = suggestion
 
