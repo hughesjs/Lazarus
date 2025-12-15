@@ -26,8 +26,7 @@ public class LazarusServiceTests : IDisposable
         await _ts.StartAsync(_ctx);
         for (int i = 0; i < 10; i++)
         {
-            _tp.Advance(_loopTime);
-            await _ts.WaitForLoopAsync();
+            await AdvanceTime();
             await Assert.That(_ts.Counter).IsEqualTo(i + 1);
         }
     }
@@ -37,8 +36,7 @@ public class LazarusServiceTests : IDisposable
     {
         await _ts.StartAsync(_ctx);
         _ts.CatchFire();
-        _tp.Advance(_loopTime);
-        await _ts.WaitForLoopAsync();
+        await AdvanceTime();
 
         await Assert.That(_ts.ExecuteTask!).IsNotFaulted();
     }
@@ -58,21 +56,18 @@ public class LazarusServiceTests : IDisposable
     public async Task ContinuesLoopingAfterException()
     {
         _ts.CatchFire();
-        _ = _ts.StartAsync(CancellationToken.None); // Runs one loop immediately
-        _tp.Advance(_loopTime);
-        await _ts.WaitForLoopAsync(); // Run the loop again
+        _ = _ts.StartAsync(CancellationToken.None);
+        await _ts.WaitForLoopAsync(); // First loop throws immediately
 
         await Assert.That(_ts.Counter).IsEqualTo(0);
 
         _ts.StopCatchingFire();
-        _tp.Advance(_loopTime);
-        await _ts.WaitForLoopAsync();
+        await _ts.WaitForLoopAsync(); // Retries immediately after exception, now succeeds
         await Assert.That(_ts.Counter).IsEqualTo(1);
 
-        _ts.StopCatchingFire();
-        _tp.Advance(_loopTime);
-        await _ts.WaitForLoopAsync();
-        await Assert.That(_ts.Counter).IsEqualTo(2);
+        await AdvanceTime(); // Wait for delay, then next loop runs
+        await AdvanceTime(); // Wait for next iteration
+        await Assert.That(_ts.Counter).IsEqualTo(3);
     }
 
     [Test]
@@ -91,8 +86,7 @@ public class LazarusServiceTests : IDisposable
     public async Task StopAsyncStopsService()
     {
         _ = _ts.StartAsync(CancellationToken.None);
-        _tp.Advance(_loopTime);
-        await _ts.WaitForLoopAsync();
+        await AdvanceTime();
 
         await _ts.StopAsync(CancellationToken.None);
 
@@ -133,6 +127,12 @@ public class LazarusServiceTests : IDisposable
     }
 
     private class DeliberateException(string message) : Exception(message);
+
+    private async Task AdvanceTime()
+    {
+        _tp.Advance(_loopTime);
+        await _ts.WaitForLoopAsync();
+    }
 
     public void Dispose()
     {

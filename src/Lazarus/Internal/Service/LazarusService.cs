@@ -25,20 +25,17 @@ internal abstract class LazarusService : BackgroundService
             {
                 _logger.LogDebug("Performing iteration in lazarus service ({Name})", CustomName);
                 await PerformLoop(cancellationToken);
+                await Task.Delay(_loopDelay, _timeProvider, cancellationToken);
             }
-            catch (OperationCanceledException ex) when (cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException e) when (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogInformation(ex, "Cancellation of Lazarus service requested");
+                _logger.LogInformation(e, "Cancellation of Lazarus service requested");
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "Exception in Lazarus service loop, continuing");
             }
 
-            if (!cancellationToken.IsCancellationRequested)
-            {
-                await Task.Delay(_loopDelay, _timeProvider,  cancellationToken);
-            }
         }
     }
 
