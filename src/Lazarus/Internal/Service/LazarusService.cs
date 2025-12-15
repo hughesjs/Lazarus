@@ -30,6 +30,7 @@ internal abstract class LazarusService : BackgroundService
             catch (OperationCanceledException e) when (cancellationToken.IsCancellationRequested)
             {
                 _logger.LogInformation(e, "Cancellation of Lazarus service requested");
+                break; // Arguably unnecessary
             }
             catch (Exception e)
             {

@@ -95,7 +95,7 @@ public class LazarusServiceTests : IDisposable
         await Assert.That(_ts.Counter).IsEqualTo(counterAfterStop);
     }
 
-    private class TestService : LazarusService
+    private class TestService : LazarusService, IDisposable
     {
         private readonly SemaphoreSlim _loopSignal;
         private bool _shouldThrow;
@@ -122,6 +122,8 @@ public class LazarusServiceTests : IDisposable
         public void CatchFire() => _shouldThrow = true;
 
         public void StopCatchingFire() => _shouldThrow = false;
+
+        public override void Dispose() => _loopSignal.Dispose();
     }
 
     private class DeliberateException(string message) : Exception(message);
