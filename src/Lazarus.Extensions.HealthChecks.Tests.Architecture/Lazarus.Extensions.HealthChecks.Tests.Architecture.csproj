@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="TUnit" Version="1.5.60" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Lazarus.Extensions.HealthChecks\Lazarus.Extensions.HealthChecks.csproj" />
+  </ItemGroup>
+
+</Project>
