@@ -68,7 +68,7 @@ jobs:
     needs: build-main
     steps:
       - name: Download Build Artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: build-output
           path: ./build
@@ -90,7 +90,7 @@ jobs:
     needs: build-main
     steps:
       - name: Download Build Artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: build-output
           path: ./build
@@ -112,7 +112,7 @@ jobs:
     needs: build-main
     steps:
       - name: Download Build Artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: build-output
           path: ./build
@@ -134,7 +134,7 @@ jobs:
     needs: build-main
     steps:
       - name: Download Build Artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: build-output
           path: ./build
@@ -161,7 +161,7 @@ jobs:
       - healthchecks-architecture-tests
     steps:
       - name: Download Build Artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: build-output
           path: ./build
