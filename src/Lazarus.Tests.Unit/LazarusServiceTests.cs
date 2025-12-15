@@ -78,7 +78,7 @@ public class LazarusServiceTests : IDisposable
         await _ts.StartAsync(_ctx);
 
         _tp.Advance(_loopTime - TimeSpan.FromMilliseconds(1));
-        await Task.Delay(10, _ctx);
+        await Task.Delay(100, _ctx);
 
         await Assert.That(_ts.Counter).IsEqualTo(0); // No loop has run yet
     }
@@ -93,7 +93,7 @@ public class LazarusServiceTests : IDisposable
 
         int counterAfterStop = _ts.Counter;
         _tp.Advance(_loopTime * 5);
-        await Task.Delay(10, _ctx); // Give it a chance to (incorrectly) run
+        await Task.Delay(100, _ctx); // Give it a chance to (incorrectly) run
 
         await Assert.That(_ts.Counter).IsEqualTo(counterAfterStop);
     }
@@ -134,7 +134,12 @@ public class LazarusServiceTests : IDisposable
             return Task.CompletedTask;
         }
 
-        public async Task WaitForLoopAsync(CancellationToken ctx) => await _loopSignal.WaitAsync(ctx);
+        public async Task WaitForLoopAsync(CancellationToken ctx)
+        {
+            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ctx);
+            cts.CancelAfter(TimeSpan.FromSeconds(10));
+            await _loopSignal.WaitAsync(cts.Token);
+        }
 
         public void CatchFire() => _shouldThrow = true;
 
@@ -148,6 +153,7 @@ public class LazarusServiceTests : IDisposable
     private async Task AdvanceTime()
     {
         _tp.Advance(_loopTime);
+        await Task.Delay(100); // Give thread pool time to schedule continuation
         await _ts.WaitForLoopAsync(_ctx);
     }
 
