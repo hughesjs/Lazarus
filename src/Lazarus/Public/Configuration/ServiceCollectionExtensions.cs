@@ -2,7 +2,6 @@ using Lazarus.Internal.Service;
 using Lazarus.Internal.Watchdog;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace Lazarus.Public.Configuration;
