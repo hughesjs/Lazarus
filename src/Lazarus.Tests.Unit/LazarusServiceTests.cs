@@ -1,4 +1,5 @@
 using Lazarus.Internal.Service;
+using Lazarus.Internal.Watchdog;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -9,6 +10,7 @@ public class LazarusServiceTests : IDisposable
 {
     private readonly TestService _ts;
     private readonly FakeTimeProvider _tp;
+    private readonly IWatchdogService<LazarusService> _watchdog;
     private readonly CancellationToken _ctx;
 
     private readonly TimeSpan _loopTime = TimeSpan.FromSeconds(5);
@@ -16,7 +18,8 @@ public class LazarusServiceTests : IDisposable
     public LazarusServiceTests()
     {
         _tp = new();
-        _ts = new(_loopTime, NullLogger<TestService>.Instance, _tp);
+        _watchdog = new InMemoryWatchdogService<LazarusService>(_tp);
+        _ts = new(_loopTime, NullLogger<TestService>.Instance, _tp, _watchdog);
         _ctx = TestContext.Current?.Execution.CancellationToken?? CancellationToken.None;
     }
 
@@ -95,14 +98,28 @@ public class LazarusServiceTests : IDisposable
         await Assert.That(_ts.Counter).IsEqualTo(counterAfterStop);
     }
 
-    private class TestService : LazarusService, IDisposable
+    [Test]
+    public async Task RegistersHeartbeatOnEachLoop()
+    {
+        await _ts.StartAsync(_ctx);
+
+        await AdvanceTime();
+        DateTimeOffset? firstHeartbeat = _watchdog.GetLastHeartbeat(_ts);
+        await Assert.That(firstHeartbeat).IsNotNull();
+
+        await AdvanceTime();
+        DateTimeOffset? secondHeartbeat = _watchdog.GetLastHeartbeat(_ts);
+        await Assert.That(secondHeartbeat!).IsNotEqualTo(firstHeartbeat);
+    }
+
+    private class TestService : LazarusService
     {
         private readonly SemaphoreSlim _loopSignal;
         private bool _shouldThrow;
 
         public int Counter { get; private set; }
 
-        public TestService(TimeSpan loopDelay, ILogger<LazarusService> logger, TimeProvider timeProvider) : base(loopDelay, logger, timeProvider) => _loopSignal = new(1);
+        public TestService(TimeSpan loopDelay, ILogger<LazarusService> logger, TimeProvider timeProvider, IWatchdogService<LazarusService> watchdog) : base(loopDelay, logger, timeProvider, watchdog) => _loopSignal = new(1);
 
         protected override Task PerformLoop(CancellationToken cancellationToken)
         {
