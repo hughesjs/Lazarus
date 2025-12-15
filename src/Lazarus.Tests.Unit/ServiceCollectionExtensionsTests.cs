@@ -29,7 +29,7 @@ public class ServiceCollectionExtensionsTests
         TestService? innerService = provider.GetService<TestService>();
         await Assert.That(innerService).IsNotNull();
 
-        CancellationTokenSource cts = new();
+        using CancellationTokenSource cts = new();
         await hostedService!.StartAsync(cts.Token);
 
         try
