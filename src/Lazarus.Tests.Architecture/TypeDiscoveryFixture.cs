@@ -1,4 +1,5 @@
 using Lazarus.Public;
+using Lazarus.Public.Configuration;
 
 namespace Lazarus.Tests.Architecture;
 
