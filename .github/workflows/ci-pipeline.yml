@@ -19,7 +19,7 @@ jobs:
     outputs:
       version: ${{ steps.sanitize_version.outputs.sanitized_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -57,7 +57,7 @@ jobs:
         run: dotnet build Lazarus.slnx -c Release -p:Version=${{ steps.sanitize_version.outputs.sanitized_version }}
 
       - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: build-output
           path: ./src
@@ -68,7 +68,7 @@ jobs:
     needs: build-main
     steps:
       - name: Download Build Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: build-output
           path: ./build
@@ -90,7 +90,7 @@ jobs:
     needs: build-main
     steps:
       - name: Download Build Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: build-output
           path: ./build
@@ -112,7 +112,7 @@ jobs:
     needs: build-main
     steps:
       - name: Download Build Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: build-output
           path: ./build
@@ -134,7 +134,7 @@ jobs:
     needs: build-main
     steps:
       - name: Download Build Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: build-output
           path: ./build
@@ -161,7 +161,7 @@ jobs:
       - healthchecks-architecture-tests
     steps:
       - name: Download Build Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: build-output
           path: ./build
