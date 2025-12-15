@@ -12,11 +12,10 @@ on:
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    if: >
+      github.event.pull_request.author_association == 'OWNER' ||
+      github.event.pull_request.author_association == 'MEMBER' ||
+      github.event.pull_request.author_association == 'COLLABORATOR'
 
     runs-on: ubuntu-latest
     permissions:
@@ -40,18 +39,27 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Please review this pull request and provide feedback on:
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Performance considerations
-            - Security concerns
-            - Test coverage
+            Please review this pull request. Focus ONLY on substantive issues:
+            - Bugs, logic errors, or incorrect behaviour
+            - Security vulnerabilities
+            - Performance problems
+            - Missing error handling
+            - Breaking changes or API issues
 
-            Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
+            DO NOT comment on:
+            - Whitespace, formatting, or style issues
+            - Naming conventions (unless seriously misleading)
+            - Minor code organisation preferences
+            - Things that linters/formatters should handle
 
-            Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
+            Be concise. If there are no substantive issues, say so briefly.
+
+            Use `gh pr review` with your Bash tool to leave a proper PR review:
+            - Use `gh pr review --comment --body "..."` for general feedback
+            - Use `gh pr review --request-changes --body "..."` if there are issues that must be fixed
+            - Use `gh pr review --approve --body "..."` if the code looks good
 
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://code.claude.com/docs/en/cli-reference for available options
-          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
+          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr review:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
 
