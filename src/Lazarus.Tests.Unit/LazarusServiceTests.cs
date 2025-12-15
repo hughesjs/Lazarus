@@ -1,4 +1,5 @@
 using Lazarus.Internal.Service;
+using Lazarus.Internal.Watchdog;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -9,6 +10,7 @@ public class LazarusServiceTests : IDisposable
 {
     private readonly TestService _ts;
     private readonly FakeTimeProvider _tp;
+    private readonly IWatchdogService<LazarusService> _watchdog;
     private readonly CancellationToken _ctx;
 
     private readonly TimeSpan _loopTime = TimeSpan.FromSeconds(5);
@@ -16,7 +18,8 @@ public class LazarusServiceTests : IDisposable
     public LazarusServiceTests()
     {
         _tp = new();
-        _ts = new(_loopTime, NullLogger<TestService>.Instance, _tp);
+        _watchdog = new InMemoryWatchdogService<LazarusService>(_tp);
+        _ts = new(_loopTime, NullLogger<TestService>.Instance, _tp, _watchdog);
         _ctx = TestContext.Current?.Execution.CancellationToken?? CancellationToken.None;
     }
 
@@ -75,7 +78,7 @@ public class LazarusServiceTests : IDisposable
         await _ts.StartAsync(_ctx);
 
         _tp.Advance(_loopTime - TimeSpan.FromMilliseconds(1));
-        await Task.Delay(10, _ctx);
+        await Task.Delay(100, _ctx);
 
         await Assert.That(_ts.Counter).IsEqualTo(0); // No loop has run yet
     }
@@ -90,19 +93,33 @@ public class LazarusServiceTests : IDisposable
 
         int counterAfterStop = _ts.Counter;
         _tp.Advance(_loopTime * 5);
-        await Task.Delay(10, _ctx); // Give it a chance to (incorrectly) run
+        await Task.Delay(100, _ctx); // Give it a chance to (incorrectly) run
 
         await Assert.That(_ts.Counter).IsEqualTo(counterAfterStop);
     }
 
-    private class TestService : LazarusService, IDisposable
+    [Test]
+    public async Task RegistersHeartbeatOnEachLoop()
+    {
+        await _ts.StartAsync(_ctx);
+
+        await AdvanceTime();
+        DateTimeOffset? firstHeartbeat = _watchdog.GetLastHeartbeat(_ts);
+        await Assert.That(firstHeartbeat).IsNotNull();
+
+        await AdvanceTime();
+        DateTimeOffset? secondHeartbeat = _watchdog.GetLastHeartbeat(_ts);
+        await Assert.That(secondHeartbeat!).IsNotEqualTo(firstHeartbeat);
+    }
+
+    private class TestService : LazarusService
     {
         private readonly SemaphoreSlim _loopSignal;
         private bool _shouldThrow;
 
         public int Counter { get; private set; }
 
-        public TestService(TimeSpan loopDelay, ILogger<LazarusService> logger, TimeProvider timeProvider) : base(loopDelay, logger, timeProvider) => _loopSignal = new(1);
+        public TestService(TimeSpan loopDelay, ILogger<LazarusService> logger, TimeProvider timeProvider, IWatchdogService<LazarusService> watchdog) : base(loopDelay, logger, timeProvider, watchdog) => _loopSignal = new(1);
 
         protected override Task PerformLoop(CancellationToken cancellationToken)
         {
@@ -117,7 +134,12 @@ public class LazarusServiceTests : IDisposable
             return Task.CompletedTask;
         }
 
-        public async Task WaitForLoopAsync(CancellationToken ctx) => await _loopSignal.WaitAsync(ctx);
+        public async Task WaitForLoopAsync(CancellationToken ctx)
+        {
+            using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ctx);
+            cts.CancelAfter(TimeSpan.FromSeconds(10));
+            await _loopSignal.WaitAsync(cts.Token);
+        }
 
         public void CatchFire() => _shouldThrow = true;
 
@@ -131,6 +153,7 @@ public class LazarusServiceTests : IDisposable
     private async Task AdvanceTime()
     {
         _tp.Advance(_loopTime);
+        await Task.Delay(100); // Give thread pool time to schedule continuation
         await _ts.WaitForLoopAsync(_ctx);
     }
 
