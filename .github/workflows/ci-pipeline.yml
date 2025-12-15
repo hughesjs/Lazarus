@@ -1,5 +1,11 @@
 name: CI Pipeline
 on:
+  push:
+    branches:
+      - master
+    paths:
+      - "src/**"
+      - ".github/workflows/ci-pipeline.yml"
   pull_request:
     branches:
       - master
