@@ -1,6 +1,7 @@
 using Lazarus.Internal.Service;
 using Lazarus.Internal.Watchdog;
 using Lazarus.Public;
+using Lazarus.Public.Watchdog;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 
@@ -11,7 +12,7 @@ public class LazarusServiceTests : IAsyncDisposable
     private readonly LazarusService<TestService> _ts;
     private readonly TestService _innerService;
     private readonly FakeTimeProvider _tp;
-    private readonly IWatchdogService<IResilientService> _watchdog;
+    private readonly IWatchdogService _watchdog;
     private readonly CancellationToken _ctx;
 
     private readonly TimeSpan _loopTime = TimeSpan.FromSeconds(5);
@@ -19,7 +20,7 @@ public class LazarusServiceTests : IAsyncDisposable
     public LazarusServiceTests()
     {
         _tp = new();
-        _watchdog = new InMemoryWatchdogService<IResilientService>(_tp);
+        _watchdog = new InMemoryWatchdogService(_tp);
         _innerService = new();
         _ts = new(
             _loopTime,
@@ -111,11 +112,11 @@ public class LazarusServiceTests : IAsyncDisposable
         await _ts.StartAsync(_ctx);
 
         await AdvanceTime();
-        DateTimeOffset? firstHeartbeat = _watchdog.GetLastHeartbeat(_innerService);
+        DateTimeOffset? firstHeartbeat = _watchdog.GetLastHeartbeat<TestService>();
         await Assert.That(firstHeartbeat).IsNotNull();
 
         await AdvanceTime();
-        DateTimeOffset? secondHeartbeat = _watchdog.GetLastHeartbeat(_innerService);
+        DateTimeOffset? secondHeartbeat = _watchdog.GetLastHeartbeat<TestService>();
         await Assert.That(secondHeartbeat!).IsNotEqualTo(firstHeartbeat);
     }
 
