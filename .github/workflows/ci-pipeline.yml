@@ -180,11 +180,15 @@ jobs:
 
       - name: Restore Dependencies
         working-directory: ./build
-        run: dotnet restore Lazarus/Lazarus.csproj
+        run: |
+          dotnet restore Lazarus/Lazarus.csproj
+          dotnet restore Lazarus.Extensions.HealthChecks/Lazarus.Extensions.HealthChecks.csproj
 
       - name: Build and Package
         working-directory: ./build
-        run: dotnet pack ./Lazarus/Lazarus.csproj --no-build --no-restore -o ./artifacts -p:Version=${{ needs.build-main.outputs.version }}
+        run: |
+          dotnet pack ./Lazarus/Lazarus.csproj --no-build --no-restore -o ./artifacts -p:Version=${{ needs.build-main.outputs.version }}
+          dotnet pack ./Lazarus.Extensions.HealthChecks/Lazarus.Extensions.HealthChecks.csproj --no-build --no-restore -o ./artifacts -p:Version=${{ needs.build-main.outputs.version }}
 
       - name: Publish to GitHub Packages
         if: github.event.pull_request.head.repo.fork == false

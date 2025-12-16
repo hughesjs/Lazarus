@@ -5,7 +5,9 @@ on:
       - master
     paths:
       - "src/Lazarus/**"
+      - "src/Lazarus.Extensions.HealthChecks/**"
       - "!src/Lazarus.Tests/**"
+      - "!src/Lazarus.Extensions.HealthChecks.Tests/**"
       - "!**/*.md"
   workflow_dispatch:
 
@@ -50,11 +52,15 @@ jobs:
 
       - name: Restore Dependencies
         working-directory: src
-        run: dotnet restore Lazarus/Lazarus.csproj
+        run: |
+          dotnet restore Lazarus/Lazarus.csproj
+          dotnet restore Lazarus.Extensions.HealthChecks/Lazarus.Extensions.HealthChecks.csproj
 
-      - name: Build Library
+      - name: Build Libraries
         working-directory: src
-        run: dotnet build Lazarus/Lazarus.csproj --output ./build --configuration Release /p:Version=${{ steps.semver.outputs.nextStrict }}
+        run: |
+          dotnet build Lazarus/Lazarus.csproj --output ./build --configuration Release /p:Version=${{ steps.semver.outputs.nextStrict }}
+          dotnet build Lazarus.Extensions.HealthChecks/Lazarus.Extensions.HealthChecks.csproj --output ./build --configuration Release /p:Version=${{ steps.semver.outputs.nextStrict }}
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v6
@@ -62,11 +68,16 @@ jobs:
           name: build-output
           path: ./src/build
 
-      - name: Package Library
+      - name: Package Libraries
         working-directory: src
         run: |
           mkdir -p build/artifacts
           dotnet pack Lazarus/Lazarus.csproj \
+          --no-restore \
+          --output ./build/artifacts \
+          /p:Version=${{ steps.semver.outputs.nextStrict }} \
+          /p:DebugSymbols=false
+          dotnet pack Lazarus.Extensions.HealthChecks/Lazarus.Extensions.HealthChecks.csproj \
           --no-restore \
           --output ./build/artifacts \
           /p:Version=${{ steps.semver.outputs.nextStrict }} \
@@ -216,6 +227,14 @@ jobs:
         with:
           owner: ${{ github.repository_owner }}
           package-name: Lazarus
+          package-type: "nuget"
+          min-versions-to-keep: 0
+          delete-only-pre-release-versions: true
+
+      - uses: actions/delete-package-versions@v5
+        with:
+          owner: ${{ github.repository_owner }}
+          package-name: Lazarus.Extensions.HealthChecks
           package-type: "nuget"
           min-versions-to-keep: 0
           delete-only-pre-release-versions: true
