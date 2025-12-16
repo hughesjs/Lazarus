@@ -75,13 +75,11 @@ jobs:
           dotnet pack Lazarus/Lazarus.csproj \
           --no-restore \
           --output ./build/artifacts \
-          /p:Version=${{ steps.semver.outputs.nextStrict }} \
-          /p:DebugSymbols=false
+          /p:Version=${{ steps.semver.outputs.nextStrict }}
           dotnet pack Lazarus.Extensions.HealthChecks/Lazarus.Extensions.HealthChecks.csproj \
           --no-restore \
           --output ./build/artifacts \
-          /p:Version=${{ steps.semver.outputs.nextStrict }} \
-          /p:DebugSymbols=false
+          /p:Version=${{ steps.semver.outputs.nextStrict }}
 
       - name: Upload Package Artifact
         uses: actions/upload-artifact@v6
