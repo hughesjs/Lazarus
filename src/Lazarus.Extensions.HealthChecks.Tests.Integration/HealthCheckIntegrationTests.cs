@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
 using Lazarus.Extensions.HealthChecks.Tests.Integration.App;
+using Lazarus.Extensions.HealthChecks.Tests.Integration.Fixture;
 using Lazarus.Public.Watchdog;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -12,7 +13,7 @@ namespace Lazarus.Extensions.HealthChecks.Tests.Integration;
 
 public class HealthCheckIntegrationTests : IAsyncDisposable
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly WebApplicationFactory<LazarusTestWebApplicationFactory> _factory;
     private readonly HttpClient _client;
     private readonly FakeTimeProvider _timeProvider;
     private readonly IWatchdogService _watchdog;
@@ -24,11 +25,12 @@ public class HealthCheckIntegrationTests : IAsyncDisposable
     {
         _timeProvider = new();
 
-        _factory = new WebApplicationFactory<Program>()
+        _factory = new LazarusTestWebApplicationFactory()
             .WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(services =>
                 {
+                    services.AddRouting();
                     services.Replace(new(typeof(TimeProvider), _timeProvider));
                 });
             });
@@ -69,7 +71,7 @@ public class HealthCheckIntegrationTests : IAsyncDisposable
     [Test]
     public async Task MultipleServices_IndependentResults()
     {
-        _timeProvider.Advance((Program.INTERVAL_ONE + Program.INTERVAL_TWO) / 2);
+        _timeProvider.Advance((LazarusTestWebApplicationFactory.IntervalOne + LazarusTestWebApplicationFactory.IntervalTwo) / 2);
 
         await _serviceOne.PerformLoop(_ctx); // This should have a new heartbeat
         await _serviceTwo.PerformLoop(_ctx); // This one shouldn't
