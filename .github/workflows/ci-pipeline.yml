@@ -104,11 +104,18 @@ jobs:
         run: dotnet ${{ matrix.test-project }}.dll
 
   package:
-    name: Package Pre-release
+    name: Package ${{ matrix.package-name }} Pre-release
     runs-on: ubuntu-latest
     needs:
       - build-main
       - test
+    strategy:
+      matrix:
+        include:
+          - package-name: "Lazarus"
+            project-path: "Lazarus/Lazarus.csproj"
+          - package-name: "HealthChecks"
+            project-path: "Lazarus.Extensions.HealthChecks/Lazarus.Extensions.HealthChecks.csproj"
     steps:
       - name: Download Build Artifacts
         uses: actions/download-artifact@v7
@@ -122,15 +129,15 @@ jobs:
           dotnet-version: "10.0.x"
           dotnet-quality: "preview"
 
-      - name: Restore Dependencies
+      - name: Restore ${{ matrix.package-name }} Dependencies
         working-directory: ./build
-        run: dotnet restore Lazarus/Lazarus.csproj
+        run: dotnet restore ${{ matrix.project-path }}
 
-      - name: Build and Package
+      - name: Package ${{ matrix.package-name }}
         working-directory: ./build
-        run: dotnet pack ./Lazarus/Lazarus.csproj --no-build --no-restore -o ./artifacts -p:Version=${{ needs.build-main.outputs.version }}
+        run: dotnet pack ./${{ matrix.project-path }} --no-build --no-restore -o ./artifacts -p:Version=${{ needs.build-main.outputs.version }}
 
-      - name: Publish to GitHub Packages
+      - name: Publish ${{ matrix.package-name }} to GitHub Packages
         if: github.event.pull_request.head.repo.fork == false
         working-directory: ./build
         run: |
