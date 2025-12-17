@@ -18,7 +18,7 @@ public class LazarusTestWebApplicationFactory : WebApplicationFactory<LazarusTes
             {
                 webBuilder
                     .UseTestServer()
-                    .UseContentRoot(AppContext.BaseDirectory)
+                    .UseContentRoot(Directory.GetCurrentDirectory())
                     .ConfigureServices(services =>
                     {
                         services.AddLazarusService<TestService<string>>(IntervalOne);
