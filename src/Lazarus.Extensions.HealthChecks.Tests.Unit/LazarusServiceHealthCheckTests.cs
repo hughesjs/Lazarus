@@ -150,7 +150,7 @@ public class LazarusServiceHealthCheckTests
         await Assert.That(result.Data.ContainsKey("service")).IsTrue();
 
         // Verify service type in metadata
-        await Assert.That(result.Data["service"]).IsEqualTo(typeof(TestService));
+        await Assert.That(result.Data["service"]).IsEqualTo(nameof(TestService));
     }
 
     [Test]
