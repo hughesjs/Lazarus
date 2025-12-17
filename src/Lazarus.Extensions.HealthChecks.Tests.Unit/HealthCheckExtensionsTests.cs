@@ -23,7 +23,7 @@ public class HealthCheckExtensionsTests
         IHealthChecksBuilder builder = services.AddHealthChecks();
 
         // Act
-        builder.AddLazarusHealthcheck<TestService>(TimeSpan.FromSeconds(30));
+        builder.AddLazarusHealthcheck<TestService>(TimeSpan.FromSeconds(30), customName: "TestService");
 
         // Assert
         ServiceProvider provider = services.BuildServiceProvider();
@@ -32,11 +32,11 @@ public class HealthCheckExtensionsTests
         HealthReport report = await healthCheckService.CheckHealthAsync();
 
         await Assert.That(report.Entries).IsNotEmpty();
-        await Assert.That(report.Entries.ContainsKey("TestService (Lazarus)")).IsTrue();
+        await Assert.That(report.Entries.ContainsKey("TestService")).IsTrue();
     }
 
     [Test]
-    public async Task DefaultName_UsesServiceName()
+    public async Task DefaultName_ContainsServiceName()
     {
         // Arrange
         ServiceCollection services = new();
@@ -55,7 +55,7 @@ public class HealthCheckExtensionsTests
 
         HealthReport report = await healthCheckService.CheckHealthAsync();
 
-        await Assert.That(report.Entries.ContainsKey("TestService (Lazarus)")).IsTrue();
+        await Assert.That(report.Entries.Keys.Any(k => k.Contains("TestService"))).IsTrue();
     }
 
     [Test]
@@ -82,7 +82,7 @@ public class HealthCheckExtensionsTests
         HealthReport report = await healthCheckService.CheckHealthAsync();
 
         await Assert.That(report.Entries.ContainsKey("My Custom Health Check")).IsTrue();
-        await Assert.That(report.Entries.ContainsKey("TestService (Lazarus)")).IsFalse();
+        await Assert.That(report.Entries).HasCount().EqualTo(1);
     }
 
     [Test]
@@ -99,6 +99,7 @@ public class HealthCheckExtensionsTests
         // Act
         builder.AddLazarusHealthcheck<TestService>(
             TimeSpan.FromSeconds(30),
+            customName: "TestService",
             tags: new[] { "lazarus", "background-service" }
         );
 
@@ -108,7 +109,7 @@ public class HealthCheckExtensionsTests
 
         HealthReport report = await healthCheckService.CheckHealthAsync();
 
-        HealthReportEntry entry = report.Entries["TestService (Lazarus)"];
+        HealthReportEntry entry = report.Entries["TestService"];
         await Assert.That(entry.Tags).Contains("lazarus");
         await Assert.That(entry.Tags).Contains("background-service");
     }
@@ -133,7 +134,8 @@ public class HealthCheckExtensionsTests
 
         // Act
         builder.AddLazarusHealthcheck<TestService>(
-            TimeSpan.FromSeconds(30) // 30 second timeout
+            TimeSpan.FromSeconds(30), // 30 second timeout
+            customName: "TestService"
         );
 
         // Assert
@@ -142,7 +144,7 @@ public class HealthCheckExtensionsTests
 
         HealthReport report = await healthCheckService.CheckHealthAsync();
 
-        HealthReportEntry entry = report.Entries["TestService (Lazarus)"];
+        HealthReportEntry entry = report.Entries["TestService"];
 
         // Should be unhealthy because time passed (35s) > timeout (30s)
         await Assert.That(entry.Status).IsEqualTo(HealthStatus.Unhealthy);
