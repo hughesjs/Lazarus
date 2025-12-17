@@ -1,5 +1,6 @@
 using Lazarus.Internal.Service;
 using Lazarus.Internal.Watchdog;
+using Lazarus.Public.Watchdog;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -16,7 +17,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddLazarusService<TService>(this IServiceCollection services, TimeSpan loopDelay) where TService : class, IResilientService
     {
         services.TryAddSingleton(TimeProvider.System);
-        services.TryAddSingleton<IWatchdogService<IResilientService>, InMemoryWatchdogService<IResilientService>>();
+        services.TryAddSingleton<IWatchdogService, InMemoryWatchdogService>();
 
         // This restriction may prove unnecessary later
         if (services.Any(s => s.ServiceType == typeof(TService)))
@@ -30,7 +31,7 @@ public static class ServiceCollectionExtensions
             TService inner = sp.GetRequiredService<TService>();
             ILogger<LazarusService<TService>> logger = sp.GetRequiredService<ILogger<LazarusService<TService>>>();
             TimeProvider timeProvider = sp.GetRequiredService<TimeProvider>();
-            IWatchdogService<IResilientService> watchdog = sp.GetRequiredService<IWatchdogService<IResilientService>>();
+            IWatchdogService watchdog = sp.GetRequiredService<IWatchdogService>();
             return new(loopDelay, logger, timeProvider, watchdog, inner);
         });
         return services;

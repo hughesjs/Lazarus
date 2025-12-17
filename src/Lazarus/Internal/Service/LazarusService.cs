@@ -1,5 +1,6 @@
 using Lazarus.Internal.Watchdog;
 using Lazarus.Public;
+using Lazarus.Public.Watchdog;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -10,11 +11,11 @@ internal class LazarusService<TInnerService> : BackgroundService, IAsyncDisposab
     private readonly TimeSpan _loopDelay;
     private readonly ILogger<LazarusService<TInnerService>> _logger;
     private readonly TimeProvider _timeProvider;
-    private readonly IWatchdogService<IResilientService> _watchdogService;
+    private readonly IWatchdogService _watchdogService;
     private readonly TInnerService _innerService;
 
 
-    internal LazarusService(TimeSpan loopDelay, ILogger<LazarusService<TInnerService>> logger, TimeProvider timeProvider, IWatchdogService<IResilientService> watchdogService, TInnerService innerService)
+    internal LazarusService(TimeSpan loopDelay, ILogger<LazarusService<TInnerService>> logger, TimeProvider timeProvider, IWatchdogService watchdogService, TInnerService innerService)
     {
         _loopDelay = loopDelay;
         _logger = logger;
@@ -30,7 +31,7 @@ internal class LazarusService<TInnerService> : BackgroundService, IAsyncDisposab
             // Still heartbeat even if we're faulting
             try
             {
-                _watchdogService.RegisterHeartbeat(_innerService);
+                _watchdogService.RegisterHeartbeat<TInnerService>();
             }
             catch (Exception e)
             {

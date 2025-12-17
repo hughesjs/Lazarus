@@ -20,6 +20,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Lazarus.Tests.Unit"/>
+    <InternalsVisibleTo Include="Lazarus.Extensions.HealthChecks.Tests.Unit"/>
+    <InternalsVisibleTo Include="Lazarus.Extensions.HealthChecks.Tests.Integration"/>
   </ItemGroup>
   
 </Project>

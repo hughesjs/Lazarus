@@ -5,7 +5,7 @@ namespace Lazarus.Tests.Unit;
 
 public class InMemoryWatchdogServiceTests
 {
-    private readonly InMemoryWatchdogService<string> _inMemoryWatchdog;
+    private readonly InMemoryWatchdogService _inMemoryWatchdog;
     private readonly FakeTimeProvider _timeProvider;
 
     public InMemoryWatchdogServiceTests()
@@ -17,7 +17,7 @@ public class InMemoryWatchdogServiceTests
     [Test]
     public async Task GetLastHeartbeatReturnsNullWhenServiceNotRegistered()
     {
-        DateTimeOffset? result = _inMemoryWatchdog.GetLastHeartbeat("unknown");
+        DateTimeOffset? result = _inMemoryWatchdog.GetLastHeartbeat<UnknownService>();
 
         await Assert.That(result).IsNull();
     }
@@ -27,35 +27,39 @@ public class InMemoryWatchdogServiceTests
     {
         DateTimeOffset expectedTime = _timeProvider.GetUtcNow();
 
-        _inMemoryWatchdog.RegisterHeartbeat("service1");
+        _inMemoryWatchdog.RegisterHeartbeat<Service1>();
 
-        await Assert.That(_inMemoryWatchdog.GetLastHeartbeat("service1")).IsEqualTo(expectedTime);
+        await Assert.That(_inMemoryWatchdog.GetLastHeartbeat<Service1>()).IsEqualTo(expectedTime);
     }
 
     [Test]
     public async Task RegisterHeartbeatUpdatesTimeWhenCalledAgain()
     {
-        _inMemoryWatchdog.RegisterHeartbeat("service1");
-        DateTimeOffset firstTime = _inMemoryWatchdog.GetLastHeartbeat("service1")!.Value;
+        _inMemoryWatchdog.RegisterHeartbeat<Service1>();
+        DateTimeOffset firstTime = _inMemoryWatchdog.GetLastHeartbeat<Service1>()!.Value;
 
         _timeProvider.Advance(TimeSpan.FromMinutes(5));
-        _inMemoryWatchdog.RegisterHeartbeat("service1");
+        _inMemoryWatchdog.RegisterHeartbeat<Service1>();
 
-        await Assert.That(_inMemoryWatchdog.GetLastHeartbeat("service1")).IsEqualTo(firstTime + TimeSpan.FromMinutes(5));
+        await Assert.That(_inMemoryWatchdog.GetLastHeartbeat<Service1>()).IsEqualTo(firstTime + TimeSpan.FromMinutes(5));
     }
 
 
     [Test]
     public async Task TracksMultipleServicesIndependently()
     {
-        _inMemoryWatchdog.RegisterHeartbeat("service1");
+        _inMemoryWatchdog.RegisterHeartbeat<Service1>();
         DateTimeOffset time1 = _timeProvider.GetUtcNow();
 
         _timeProvider.Advance(TimeSpan.FromMinutes(5));
-        _inMemoryWatchdog.RegisterHeartbeat("service2");
+        _inMemoryWatchdog.RegisterHeartbeat<Service2>();
         DateTimeOffset time2 = _timeProvider.GetUtcNow();
 
-        await Assert.That(_inMemoryWatchdog.GetLastHeartbeat("service1")).IsEqualTo(time1);
-        await Assert.That(_inMemoryWatchdog.GetLastHeartbeat("service2")).IsEqualTo(time2);
+        await Assert.That(_inMemoryWatchdog.GetLastHeartbeat<Service1>()).IsEqualTo(time1);
+        await Assert.That(_inMemoryWatchdog.GetLastHeartbeat<Service2>()).IsEqualTo(time2);
     }
+
+    private class UnknownService;
+    private class Service1;
+    private class Service2;
 }

@@ -489,3 +489,7 @@ tags
 # End of https://www.toptal.com/developers/gitignore/api/csharp,rider,vim
 
 *.DS_Store
+
+# Local act testing artifacts
+artifacts-ci/
+artifacts-cd/
