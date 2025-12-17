@@ -42,10 +42,21 @@ jobs:
         id: semver-outputs
         run: echo "version=${{ steps.semver.outputs.nextStrict }}" >> $GITHUB_OUTPUT
 
-  build-solution:
-    name: Build Solution
+  build-library:
+    name: Build ${{ matrix.library-name }}
     runs-on: ubuntu-latest
     needs: version
+    strategy:
+      matrix:
+        include:
+          - library-name: "Lazarus"
+            project-path: "Lazarus/Lazarus.csproj"
+            artifact-name: "lazarus-build-output"
+            package-artifact-name: "lazarus-package-output"
+          - library-name: "HealthChecks"
+            project-path: "Lazarus.Extensions.HealthChecks/Lazarus.Extensions.HealthChecks.csproj"
+            artifact-name: "healthchecks-build-output"
+            package-artifact-name: "healthchecks-package-output"
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
@@ -56,78 +67,93 @@ jobs:
           dotnet-version: "10.0.x"
           dotnet-quality: "preview"
 
-      - name: Restore Dependencies
+      - name: Restore ${{ matrix.library-name }} Dependencies
         working-directory: src
-        run: dotnet restore Lazarus.slnx
+        run: dotnet restore ${{ matrix.project-path }}
 
-      - name: Build Solution
+      - name: Build ${{ matrix.library-name }}
         working-directory: src
-        run: dotnet build Lazarus.slnx --configuration Release --no-restore /p:Version=${{ needs.version.outputs.version }}
+        run: dotnet build ${{ matrix.project-path }} --output ./build-${{ matrix.artifact-name }} --configuration Release /p:Version=${{ needs.version.outputs.version }}
 
-      - name: Upload Solution Build Artifact
+      - name: Upload ${{ matrix.library-name }} Build Artifact
         uses: actions/upload-artifact@v6
         with:
-          name: solution-build-output
-          path: ./src
-
-  package-library:
-    name: Package ${{ matrix.library-name }}
-    runs-on: ubuntu-latest
-    needs:
-      - version
-      - build-solution
-    strategy:
-      matrix:
-        include:
-          - library-name: "Lazarus"
-            project-path: "Lazarus/Lazarus.csproj"
-            package-artifact-name: "lazarus-package-output"
-          - library-name: "HealthChecks"
-            project-path: "Lazarus.Extensions.HealthChecks/Lazarus.Extensions.HealthChecks.csproj"
-            package-artifact-name: "healthchecks-package-output"
-    steps:
-      - name: Download Solution Build
-        uses: actions/download-artifact@v7
-        with:
-          name: solution-build-output
-          path: ./src
-
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: "10.0.x"
-          dotnet-quality: "preview"
+          name: ${{ matrix.artifact-name }}
+          path: ./src/build-${{ matrix.artifact-name }}
 
       - name: Package ${{ matrix.library-name }}
         working-directory: src
         run: |
+          mkdir -p build-${{ matrix.artifact-name }}/artifacts
           dotnet pack ${{ matrix.project-path }} \
-            --no-build \
-            --no-restore \
-            --configuration Release \
-            --output ./artifacts \
-            /p:Version=${{ needs.version.outputs.version }} \
-            /p:DebugSymbols=false
+          --no-restore \
+          --output ./build-${{ matrix.artifact-name }}/artifacts \
+          /p:Version=${{ needs.version.outputs.version }} \
+          /p:DebugSymbols=false
 
       - name: Upload ${{ matrix.library-name }} Package Artifact
         uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.package-artifact-name }}
-          path: ./src/artifacts/*.nupkg
+          path: ./src/build-${{ matrix.artifact-name }}/artifacts/*.nupkg
 
-  run-tests:
-    name: Run ${{ matrix.test-name }}
+  build-tests:
+    name: Build ${{ matrix.test-name }}
     runs-on: ubuntu-latest
-    needs: build-solution
+    needs: version
     strategy:
       matrix:
         include:
           - test-name: "Lazarus Unit Tests"
             test-project: "Lazarus.Tests.Unit"
+            artifact-name: "test-build-output"
           - test-name: "HealthChecks Unit Tests"
             test-project: "Lazarus.Extensions.HealthChecks.Tests.Unit"
+            artifact-name: "healthcheck-unit-test-build-output"
           - test-name: "HealthChecks Integration Tests"
             test-project: "Lazarus.Extensions.HealthChecks.Tests.Integration"
+            artifact-name: "healthcheck-integration-test-build-output"
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+          dotnet-quality: "preview"
+
+      - name: Build ${{ matrix.test-name }}
+        working-directory: src
+        run: dotnet build ${{ matrix.test-project }}/${{ matrix.test-project }}.csproj --output ./build-${{ matrix.artifact-name }} --configuration Release
+
+      - name: Upload ${{ matrix.test-name }} Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ./src/build-${{ matrix.artifact-name }}
+
+  run-tests:
+    name: Run ${{ matrix.test-name }}
+    runs-on: ubuntu-latest
+    needs:
+      - build-library
+      - build-tests
+    strategy:
+      matrix:
+        include:
+          - test-name: "Lazarus Unit Tests"
+            test-project: "Lazarus.Tests.Unit"
+            artifact-name: "test-build-output"
+            library-artifact: "lazarus-build-output"
+          - test-name: "HealthChecks Unit Tests"
+            test-project: "Lazarus.Extensions.HealthChecks.Tests.Unit"
+            artifact-name: "healthcheck-unit-test-build-output"
+            library-artifact: "healthchecks-build-output"
+          - test-name: "HealthChecks Integration Tests"
+            test-project: "Lazarus.Extensions.HealthChecks.Tests.Integration"
+            artifact-name: "healthcheck-integration-test-build-output"
+            library-artifact: "healthchecks-build-output"
     steps:
       - name: Set up .NET
         uses: actions/setup-dotnet@v5
@@ -135,15 +161,21 @@ jobs:
           dotnet-version: "10.0.x"
           dotnet-quality: "preview"
 
-      - name: Download Solution Build
+      - name: Download built library
         uses: actions/download-artifact@v7
         with:
-          name: solution-build-output
-          path: ./src
+          name: ${{ matrix.library-artifact }}
+          path: ./build
+
+      - name: Download ${{ matrix.test-name }} artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ./build
 
       - name: Run ${{ matrix.test-name }}
         timeout-minutes: 5
-        working-directory: ./src/${{ matrix.test-project }}/bin/Release/net10.0
+        working-directory: ./build
         run: dotnet ${{ matrix.test-project }}.dll
 
   publish-release:
@@ -152,7 +184,7 @@ jobs:
     needs:
       - run-tests
       - version
-      - package-library
+      - build-library
     steps:
       - name: Checkout Code
         uses: actions/checkout@v6
@@ -212,7 +244,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - run-tests
-      - package-library
+      - build-library
     steps:
       - name: Download Lazarus Package
         uses: actions/download-artifact@v7
