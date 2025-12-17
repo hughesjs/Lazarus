@@ -27,7 +27,7 @@ internal class LazarusServiceHealthCheck<TService>: IHealthCheck
         }
 
         TimeSpan timePassed = _timeProvider.GetUtcNow() - lastHeartbeat.Value;
-        Dictionary<string, object> metaDict = new() { ["lastHeartbeat"] = lastHeartbeat, ["timePassed"] = timePassed, ["timeout"] = _timeout, ["service"] =  typeof(TService)};
+        Dictionary<string, object> metaDict = new() { ["lastHeartbeat"] = lastHeartbeat, ["timePassed"] = timePassed, ["timeout"] = _timeout, ["service"] =  typeof(TService).Name};
 
         if (timePassed > _timeout)
         {

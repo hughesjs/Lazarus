@@ -15,4 +15,9 @@
       <ProjectReference Include="..\Lazarus\Lazarus.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="Lazarus.Extensions.HealthChecks.Tests.Unit"/>
+        <InternalsVisibleTo Include="Lazarus.Extensions.HealthChecks.Tests.Integration"/>
+    </ItemGroup>
+
 </Project>

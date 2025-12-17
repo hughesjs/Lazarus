@@ -6,7 +6,9 @@
   </Folder>
   <Folder Name="/HealthChecks/">
     <Project Path="Lazarus.Extensions.HealthChecks.Tests.Architecture/Lazarus.Extensions.HealthChecks.Tests.Architecture.csproj" />
-    <Project Path="Lazarus.Extensions.HealthChecks.Tests/Lazarus.Extensions.HealthChecks.Tests.csproj" />
+    <Project Path="Lazarus.Extensions.HealthChecks.Tests.Unit/Lazarus.Extensions.HealthChecks.Tests.Unit.csproj" />
+    <Project Path="Lazarus.Extensions.HealthChecks.Tests.Integration.App/Lazarus.Extensions.HealthChecks.Tests.Integration.App.csproj" />
+    <Project Path="Lazarus.Extensions.HealthChecks.Tests.Integration/Lazarus.Extensions.HealthChecks.Tests.Integration.csproj" />
     <Project Path="Lazarus.Extensions.HealthChecks\Lazarus.Extensions.HealthChecks.csproj" />
   </Folder>
 </Solution>

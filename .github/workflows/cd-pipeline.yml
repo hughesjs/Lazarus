@@ -88,6 +88,26 @@ jobs:
           name: test-build-output
           path: ./src/build-test
 
+      - name: Build HealthCheck Unit Test Project
+        working-directory: src
+        run: dotnet build Lazarus.Extensions.HealthChecks.Tests.Unit/Lazarus.Extensions.HealthChecks.Tests.Unit.csproj --output ./build-healthcheck-unit-test --configuration Release
+
+      - name: Build HealthCheck Integration Test Project
+        working-directory: src
+        run: dotnet build Lazarus.Extensions.HealthChecks.Tests.Integration/Lazarus.Extensions.HealthChecks.Tests.Integration.csproj --output ./build-healthcheck-integration-test --configuration Release
+
+      - name: Upload HealthCheck Unit Test Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: healthcheck-unit-test-build-output
+          path: ./src/build-healthcheck-unit-test
+
+      - name: Upload HealthCheck Integration Test Artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: healthcheck-integration-test-build-output
+          path: ./src/build-healthcheck-integration-test
+
   run-tests:
     name: Run Tests
     runs-on: ubuntu-latest
@@ -114,6 +134,28 @@ jobs:
         timeout-minutes: 5
         working-directory: ./build
         run: dotnet Lazarus.Tests.Unit.dll
+
+      - name: Download built healthcheck unit tests
+        uses: actions/download-artifact@v7
+        with:
+          name: healthcheck-unit-test-build-output
+          path: ./build-healthcheck-unit
+
+      - name: Run healthcheck unit tests
+        timeout-minutes: 5
+        working-directory: ./build-healthcheck-unit
+        run: dotnet Lazarus.Extensions.HealthChecks.Tests.Unit.dll
+
+      - name: Download built healthcheck integration tests
+        uses: actions/download-artifact@v7
+        with:
+          name: healthcheck-integration-test-build-output
+          path: ./build-healthcheck-integration
+
+      - name: Run healthcheck integration tests
+        timeout-minutes: 5
+        working-directory: ./build-healthcheck-integration
+        run: dotnet Lazarus.Extensions.HealthChecks.Tests.Integration.dll
 
   publish-release:
     name: Publish Release
