@@ -39,13 +39,13 @@ public static class HealthCheckExtensions
     /// <example>
     /// <code>
     /// services.AddHealthChecks()
-    ///     .AddLazarusHealthcheck&lt;MyBackgroundService&gt;(
+    ///     .AddLazarusHealthCheck&lt;MyBackgroundService&gt;(
     ///         timeout: TimeSpan.FromSeconds(30),
     ///         customName: "my-service-health",
     ///         tags: new[] { "background-services" });
     /// </code>
     /// </example>
-    public static IHealthChecksBuilder AddLazarusHealthcheck<TService>(this IHealthChecksBuilder builder, TimeSpan timeout, string? customName = null, HealthStatus failureStatus = HealthStatus.Unhealthy, IEnumerable<string>? tags = null)
+    public static IHealthChecksBuilder AddLazarusHealthCheck<TService>(this IHealthChecksBuilder builder, TimeSpan timeout, string? customName = null, HealthStatus failureStatus = HealthStatus.Unhealthy, IEnumerable<string>? tags = null)
     {
         string name = customName ?? $"{typeof(TService).Name} ({GetRandomHash()}) ";
 

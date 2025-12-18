@@ -23,7 +23,7 @@ public class HealthCheckExtensionsTests
         IHealthChecksBuilder builder = services.AddHealthChecks();
 
         // Act
-        builder.AddLazarusHealthcheck<TestService>(TimeSpan.FromSeconds(30));
+        builder.AddLazarusHealthCheck<TestService>(TimeSpan.FromSeconds(30));
 
         // Assert
         ServiceProvider provider = services.BuildServiceProvider();
@@ -44,7 +44,7 @@ public class HealthCheckExtensionsTests
 
         IHealthChecksBuilder builder = services.AddHealthChecks();
 
-        builder.AddLazarusHealthcheck<TestService>(TimeSpan.FromSeconds(30));
+        builder.AddLazarusHealthCheck<TestService>(TimeSpan.FromSeconds(30));
 
 
         ServiceProvider provider = services.BuildServiceProvider();
@@ -65,7 +65,7 @@ public class HealthCheckExtensionsTests
 
         IHealthChecksBuilder builder = services.AddHealthChecks();
 
-        builder.AddLazarusHealthcheck<TestService>(
+        builder.AddLazarusHealthCheck<TestService>(
             TimeSpan.FromSeconds(30),
             customName: "My Custom Health Check"
         );

@@ -24,8 +24,8 @@ public class LazarusTestWebApplicationFactory : WebApplicationFactory<LazarusTes
                         services.AddLazarusService<TestService<string>>(IntervalOne);
                         services.AddLazarusService<TestService<object>>(IntervalTwo);
                         services.AddHealthChecks()
-                            .AddLazarusHealthcheck<TestService<string>>(IntervalOne * 2)
-                            .AddLazarusHealthcheck<TestService<object>>(IntervalTwo * 2);
+                            .AddLazarusHealthCheck<TestService<string>>(IntervalOne * 2)
+                            .AddLazarusHealthCheck<TestService<object>>(IntervalTwo * 2);
                     })
                     .Configure(app =>
                     {

@@ -5,7 +5,9 @@ on:
       - master
     paths:
       - "src/Lazarus/**"
-      - "!src/Lazarus.Tests/**"
+      - "src/Lazarus.Extensions.HealthChecks/**"
+      - "!src/Lazarus.Extensions.HealthChecks.Tests*/**"
+      - "!src/Lazarus.Tests*/**"
       - "!**/*.md"
   workflow_dispatch:
 
@@ -69,6 +71,7 @@ jobs:
         with:
           name: solution-build-output
           path: ./src
+          include-hidden-files: true
 
   package-library:
     name: Package ${{ matrix.library-name }}
@@ -100,6 +103,8 @@ jobs:
 
       - name: Package ${{ matrix.library-name }}
         working-directory: src
+        env:
+          NUGET_PACKAGES: ./.nuget/packages
         run: |
           dotnet pack ${{ matrix.project-path }} \
             --no-build \
