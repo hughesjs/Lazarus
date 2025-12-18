@@ -210,25 +210,30 @@ When unhealthy (heartbeat timeout exceeded or no heartbeat):
 
 ### How Health Checks Work
 
+Health checks are executed **on-demand** when the `/health` endpoint is called (e.g., by Kubernetes, load balancers, or monitoring tools). They don't run periodically in the background.
+
 ```mermaid
 sequenceDiagram
+    participant Client as Client/Monitoring
     participant HC as Health Check
     participant WD as Watchdog Service
     participant LS as Lazarus Service
 
+    Note over LS: Service continuously runs...
     LS->>WD: RegisterHeartbeat()
     WD->>WD: Store timestamp
 
-    Note over LS: Service runs loop...
+    Note over Client: External monitoring polls endpoint
 
+    Client->>HC: GET /health
     HC->>WD: GetLastHeartbeat()
     WD->>HC: Return timestamp
     HC->>HC: Calculate time since heartbeat
 
     alt Heartbeat within timeout
-        HC->>HC: Return Healthy
+        HC->>Client: 200 OK (Healthy)
     else Heartbeat too old or missing
-        HC->>HC: Return Unhealthy
+        HC->>Client: 503 Service Unavailable (Unhealthy)
     end
 ```
 
