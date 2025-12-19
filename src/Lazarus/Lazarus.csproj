@@ -14,6 +14,22 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <PackageId>Lazarus</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>James Hughes</Authors>
+    <Company>James Hughes</Company>
+    <Description>A bulletproof BackgroundService implementation with auto-resurrection and heartbeat monitoring. Lazarus wraps your background services in a resilient wrapper that never dies - exceptions are caught, logged, and the service continues running.</Description>
+    <Copyright>Copyright (c) 2025 James Hughes</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/hughesjs/Lazarus</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/hughesjs/Lazarus</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>backgroundservice;resilient;health-checks;watchdog;dotnet;background-worker</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.1" />
   </ItemGroup>
@@ -23,5 +39,13 @@
     <InternalsVisibleTo Include="Lazarus.Extensions.HealthChecks.Tests.Unit"/>
     <InternalsVisibleTo Include="Lazarus.Extensions.HealthChecks.Tests.Integration"/>
   </ItemGroup>
-  
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <Target Name="CopyReadmeToOutputDirectory" AfterTargets="Build">
+    <Copy SourceFiles="../../README.md" DestinationFolder="$(OutputPath)" />
+  </Target>
+
 </Project>
