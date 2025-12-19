@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Lazarus.Internal.Service;
 
-internal class LazarusService<TInnerService> : BackgroundService, IAsyncDisposable where  TInnerService : class, IResilientService
+internal class LazarusService<TInnerService> : BackgroundService, IAsyncDisposable where TInnerService : class, IResilientService
 {
     private readonly TimeSpan _loopDelay;
     private readonly ILogger<LazarusService<TInnerService>> _logger;
