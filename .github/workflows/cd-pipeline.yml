@@ -30,7 +30,7 @@ jobs:
 
       - name: Get Next Semantic Version
         id: semver
-        uses: ietf-tools/semver-action@v1.9.0
+        uses: ietf-tools/semver-action@v1.11.0
         with:
           token: ${{ github.token }}
           branch: master
