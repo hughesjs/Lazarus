@@ -1,6 +1,5 @@
 using Lazarus.Internal.Watchdog;
 using Lazarus.Public;
-using Lazarus.Public.Watchdog;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -11,39 +10,33 @@ internal class LazarusService<TInnerService> : BackgroundService, IAsyncDisposab
     private readonly TimeSpan _loopDelay;
     private readonly ILogger<LazarusService<TInnerService>> _logger;
     private readonly TimeProvider _timeProvider;
-    private readonly IWatchdogService _watchdogService;
+    private readonly WatchdogScopeFactory _watchdogScopeFactory;
     private readonly TInnerService _innerService;
 
 
-    internal LazarusService(TimeSpan loopDelay, ILogger<LazarusService<TInnerService>> logger, TimeProvider timeProvider, IWatchdogService watchdogService, TInnerService innerService)
+    internal LazarusService(TimeSpan loopDelay, ILogger<LazarusService<TInnerService>> logger, TimeProvider timeProvider, TInnerService innerService,
+        WatchdogScopeFactory watchdogScopeFactory)
     {
         _loopDelay = loopDelay;
         _logger = logger;
         _timeProvider = timeProvider;
-        _watchdogService = watchdogService;
         _innerService = innerService;
+        _watchdogScopeFactory = watchdogScopeFactory;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
-            // Still heartbeat even if we're faulting
-            try
-            {
-                _watchdogService.RegisterHeartbeat<TInnerService>();
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Failed to register heartbeat");
-            }
-
             try
             {
                 await Task.Delay(_loopDelay, _timeProvider, cancellationToken);
-                _logger.LogDebug("Performing iteration in lazarus service ({Name})", _innerService.Name);
-                await _innerService.PerformLoop(cancellationToken);
-
+                // ReSharper disable once ConvertToUsingDeclaration - I want this to explictly show what code is covered
+                using (WatchdogScope<TInnerService> scope = _watchdogScopeFactory.CreateScope<TInnerService>())
+                {
+                    _logger.LogDebug("Performing iteration in lazarus service ({Name})", _innerService.Name);
+                    await scope.ExecuteAsync( () =>  _innerService.PerformLoop(cancellationToken));
+                }
             }
             catch (OperationCanceledException e) when (cancellationToken.IsCancellationRequested)
             {

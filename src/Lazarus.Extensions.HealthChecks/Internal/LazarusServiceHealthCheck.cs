@@ -18,7 +18,7 @@ internal class LazarusServiceHealthCheck<TService>: IHealthCheck
 
     public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = new())
     {
-        DateTimeOffset? lastHeartbeat = _watchdogService.GetLastHeartbeat<TService>();
+        Heartbeat? lastHeartbeat = _watchdogService.GetLastHeartbeat<TService>();
 
 
         if (lastHeartbeat is null)
@@ -26,7 +26,7 @@ internal class LazarusServiceHealthCheck<TService>: IHealthCheck
             return Task.FromResult(new HealthCheckResult(HealthStatus.Unhealthy, "No heartbeat ever received, did you register your service?"));
         }
 
-        TimeSpan timePassed = _timeProvider.GetUtcNow() - lastHeartbeat.Value;
+        TimeSpan timePassed = _timeProvider.GetUtcNow() - lastHeartbeat.StartTime;
         Dictionary<string, object> metaDict = new() { ["lastHeartbeat"] = lastHeartbeat, ["timePassed"] = timePassed, ["timeout"] = _timeout, ["service"] =  typeof(TService).Name};
 
         if (timePassed > _timeout)

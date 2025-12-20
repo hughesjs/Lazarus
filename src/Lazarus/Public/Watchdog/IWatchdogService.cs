@@ -21,7 +21,7 @@ public interface IWatchdogService
     /// Lazarus automatically calls this method before each loop iteration. You can also call it
     /// manually within your service implementation during long-running operations to indicate continued liveness.
     /// </remarks>
-    public void RegisterHeartbeat<TService>();
+    public void RegisterHeartbeat<TService>(Heartbeat report);
 
     /// <summary>
     /// Gets the timestamp of the last heartbeat registered by the specified service type.
@@ -33,5 +33,7 @@ public interface IWatchdogService
     /// The <see cref="DateTimeOffset"/> of the last heartbeat, or <c>null</c> if no heartbeat
     /// has ever been registered for this service type.
     /// </returns>
-    public DateTimeOffset? GetLastHeartbeat<TService>();
+    public Heartbeat? GetLastHeartbeat<TService>();
+
+
 }

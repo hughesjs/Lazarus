@@ -50,13 +50,16 @@ public static class ServiceCollectionExtensions
         }
 
         services.AddSingleton<TService>();
+
+        services.TryAddTransient<WatchdogScopeFactory>();
+
         services.AddHostedService<LazarusService<TService>>(sp =>
         {
             TService inner = sp.GetRequiredService<TService>();
             ILogger<LazarusService<TService>> logger = sp.GetRequiredService<ILogger<LazarusService<TService>>>();
             TimeProvider timeProvider = sp.GetRequiredService<TimeProvider>();
-            IWatchdogService watchdog = sp.GetRequiredService<IWatchdogService>();
-            return new(loopDelay, logger, timeProvider, watchdog, inner);
+            WatchdogScopeFactory watchdog = sp.GetRequiredService<WatchdogScopeFactory>();
+            return new(loopDelay, logger, timeProvider, inner, watchdog);
         });
         return services;
     }
