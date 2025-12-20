@@ -58,7 +58,7 @@ internal class WatchdogScope<TService>: IDisposable
         }
 
         DateTimeOffset endTime = _timeProvider.GetUtcNow();
-        _logger.LogDebug("Executing action inside WatchdogScope. Starting at {StartTime}", endTime);
+        _logger.LogDebug("Disposing WatchdogScope. Ending at {EndTime}", endTime);
         Heartbeat report = new() { StartTime = _startTime.Value, EndTime = endTime, Exception = _exception, };
         _watchdogService.RegisterHeartbeat<TService>(report);
     }
