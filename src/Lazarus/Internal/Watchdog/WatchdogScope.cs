@@ -44,11 +44,12 @@ internal class WatchdogScope<TService>: IDisposable
 
     public void Dispose()
     {
-        if (_disposed)
+        if (!_disposed)
         {
+            _disposed = true;
             return;
         }
-        _disposed = true;
+
 
         if (_startTime is null)
         {
