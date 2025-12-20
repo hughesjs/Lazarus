@@ -31,7 +31,7 @@ internal class LazarusService<TInnerService> : BackgroundService, IAsyncDisposab
             try
             {
                 await Task.Delay(_loopDelay, _timeProvider, cancellationToken);
-                // ReSharper disable once ConvertToUsingDeclaration - I want this to explictly show what code is covered
+                // ReSharper disable once ConvertToUsingDeclaration - I want this to explicitly show what code is covered
                 using (WatchdogScope<TInnerService> scope = _watchdogScopeFactory.CreateScope<TInnerService>())
                 {
                     _logger.LogDebug("Performing iteration in lazarus service ({Name})", _innerService.Name);
