@@ -36,7 +36,12 @@ public class LazarusServiceHealthCheckTests
     public async Task HeartbeatWithinTimeout_ReturnsHealthy()
     {
         // Arrange
-        _watchdogService.RegisterHeartbeat<TestService>();
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        _watchdogService.RegisterHeartbeat<TestService>(new()
+        {
+            StartTime = now,
+            EndTime = now
+        });
         _timeProvider.Advance(TimeSpan.FromSeconds(10));
 
         LazarusServiceHealthCheck<TestService> healthCheck = new(_timeout, _watchdogService, _timeProvider);
@@ -54,7 +59,12 @@ public class LazarusServiceHealthCheckTests
     public async Task HeartbeatExactlyAtTimeout_ReturnsHealthy()
     {
         // Arrange
-        _watchdogService.RegisterHeartbeat<TestService>();
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        _watchdogService.RegisterHeartbeat<TestService>(new()
+        {
+            StartTime = now,
+            EndTime = now
+        });
         _timeProvider.Advance(TimeSpan.FromSeconds(30)); // Exactly at timeout
 
         LazarusServiceHealthCheck<TestService> healthCheck = new(_timeout, _watchdogService, _timeProvider);
@@ -71,7 +81,12 @@ public class LazarusServiceHealthCheckTests
     public async Task HeartbeatExceedsTimeout_ReturnsUnhealthy()
     {
         // Arrange
-        _watchdogService.RegisterHeartbeat<TestService>();
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        _watchdogService.RegisterHeartbeat<TestService>(new()
+        {
+            StartTime = now,
+            EndTime = now
+        });
         _timeProvider.Advance(TimeSpan.FromSeconds(35)); // Beyond timeout
 
         LazarusServiceHealthCheck<TestService> healthCheck = new(_timeout, _watchdogService, _timeProvider);
@@ -89,9 +104,19 @@ public class LazarusServiceHealthCheckTests
     public async Task MultipleHeartbeats_UsesLatest()
     {
         // Arrange
-        _watchdogService.RegisterHeartbeat<TestService>();
+        DateTimeOffset firstTime = _timeProvider.GetUtcNow();
+        _watchdogService.RegisterHeartbeat<TestService>(new()
+        {
+            StartTime = firstTime,
+            EndTime = firstTime
+        });
         _timeProvider.Advance(TimeSpan.FromSeconds(10));
-        _watchdogService.RegisterHeartbeat<TestService>(); // Second heartbeat
+        DateTimeOffset secondTime = _timeProvider.GetUtcNow();
+        _watchdogService.RegisterHeartbeat<TestService>(new()
+        {
+            StartTime = secondTime,
+            EndTime = secondTime
+        }); // Second heartbeat
         _timeProvider.Advance(TimeSpan.FromSeconds(5));
 
         LazarusServiceHealthCheck<TestService> healthCheck = new(_timeout, _watchdogService, _timeProvider);
@@ -110,9 +135,19 @@ public class LazarusServiceHealthCheckTests
     public async Task DifferentServiceTypes_TrackedSeparately()
     {
         // Arrange
-        _watchdogService.RegisterHeartbeat<Service1>();
+        DateTimeOffset time1 = _timeProvider.GetUtcNow();
+        _watchdogService.RegisterHeartbeat<Service1>(new()
+        {
+            StartTime = time1,
+            EndTime = time1
+        });
         _timeProvider.Advance(TimeSpan.FromSeconds(5));
-        _watchdogService.RegisterHeartbeat<Service2>();
+        DateTimeOffset time2 = _timeProvider.GetUtcNow();
+        _watchdogService.RegisterHeartbeat<Service2>(new()
+        {
+            StartTime = time2,
+            EndTime = time2
+        });
         _timeProvider.Advance(TimeSpan.FromSeconds(10));
 
         LazarusServiceHealthCheck<Service1> healthCheck1 = new(_timeout, _watchdogService, _timeProvider);
@@ -134,7 +169,12 @@ public class LazarusServiceHealthCheckTests
     public async Task Metadata_ContainsExpectedFields()
     {
         // Arrange
-        _watchdogService.RegisterHeartbeat<TestService>();
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        _watchdogService.RegisterHeartbeat<TestService>(new()
+        {
+            StartTime = now,
+            EndTime = now
+        });
         _timeProvider.Advance(TimeSpan.FromSeconds(10));
 
         LazarusServiceHealthCheck<TestService> healthCheck = new(_timeout, _watchdogService, _timeProvider);
@@ -157,7 +197,12 @@ public class LazarusServiceHealthCheckTests
     public async Task HealthyResult_IncludesTimingInMessage()
     {
         // Arrange
-        _watchdogService.RegisterHeartbeat<TestService>();
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        _watchdogService.RegisterHeartbeat<TestService>(new()
+        {
+            StartTime = now,
+            EndTime = now
+        });
         _timeProvider.Advance(TimeSpan.FromSeconds(15));
 
         LazarusServiceHealthCheck<TestService> healthCheck = new(_timeout, _watchdogService, _timeProvider);

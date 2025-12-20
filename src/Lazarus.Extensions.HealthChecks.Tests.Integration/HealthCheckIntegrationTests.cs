@@ -45,13 +45,13 @@ public class HealthCheckIntegrationTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task NoHeartbeat_ReturnsUnhealthyResponse()
+    public async Task NoHeartbeatReturnsUnhealthyResponse()
     {
         // Kill the first-loop heartbeat with reflection to avoid needing to expose the internals
         // or change the implementation just to support this one tests
 #pragma warning disable CA2201
         FieldInfo lastHeartbeatsField = _watchdog.GetType().GetField("_lastHeartbeats", BindingFlags.NonPublic | BindingFlags.Instance) ?? throw new("Did you change the internal field of the watchdog?");
-        ConcurrentDictionary<Type, DateTimeOffset> lastHeartbeats = (ConcurrentDictionary<Type, DateTimeOffset>)lastHeartbeatsField.GetValue(_watchdog)!;
+        ConcurrentDictionary<Type, Heartbeat> lastHeartbeats = (ConcurrentDictionary<Type, Heartbeat>)lastHeartbeatsField.GetValue(_watchdog)!;
         MethodInfo clear = lastHeartbeats.GetType().GetMethod("Clear") ?? throw new("Did you change the internal field of the watchdog?");
         clear.Invoke(lastHeartbeats, []);
 #pragma warning restore CA2201
@@ -61,20 +61,22 @@ public class HealthCheckIntegrationTests : IAsyncDisposable
     }
 
     [Test]
-    public async Task ServiceRunning_ReturnsHealthyResponse()
+    public async Task ServiceRunningReturnsHealthyResponse()
     {
+        _timeProvider.Advance(LazarusTestWebApplicationFactory.IntervalTwo);
+        await _serviceTwo.PerformLoop(_ctx);
         HttpResponseMessage res = await _client.GetAsync("/health", _ctx);
         await Assert.That(res).IsSuccessStatusCode();
     }
 
 
     [Test]
-    public async Task MultipleServices_IndependentResults()
+    public async Task MultipleServicesIndependentResults()
     {
         _timeProvider.Advance((LazarusTestWebApplicationFactory.IntervalOne + LazarusTestWebApplicationFactory.IntervalTwo) / 2);
 
-        await _serviceOne.PerformLoop(_ctx); // This should have a new heartbeat
-        await _serviceTwo.PerformLoop(_ctx); // This one shouldn't
+        await _serviceOne.PerformLoop(_ctx);
+        await _serviceTwo.PerformLoop(_ctx);
 
         HttpResponseMessage res = await _client.GetAsync("/health", _ctx);
 
@@ -83,27 +85,21 @@ public class HealthCheckIntegrationTests : IAsyncDisposable
         using JsonDocument doc = JsonDocument.Parse(content);
         JsonElement entries = doc.RootElement.GetProperty("entries");
 
-        DateTimeOffset? heartbeat1 = null;
-        DateTimeOffset? heartbeat2 = null;
+        List<JsonProperty> testServiceEntries = entries.EnumerateObject()
+            .Where(e => e.Name.Contains("TestService"))
+            .ToList();
 
-        foreach (DateTimeOffset lastHeartbeat in entries.EnumerateObject()
-                     .Where(entry => entry.Name.Contains("TestService"))
-                     .Select(entry => entry.Value.GetProperty("data"))
-                     .Select(data => DateTimeOffset.Parse(data.GetProperty("lastHeartbeat").GetString()!)))
+        JsonElement data1 = testServiceEntries[0].Value.GetProperty("data");
+        JsonElement data2 = testServiceEntries[1].Value.GetProperty("data");
+
+        bool firstServiceHasHeartbeat = data1.TryGetProperty("lastHeartbeat", out JsonElement _);
+        bool secondServiceHasHeartbeat = data2.TryGetProperty("lastHeartbeat", out JsonElement _);
+
+        using (Assert.Multiple())
         {
-            if (heartbeat1 is null)
-            {
-                heartbeat1 = lastHeartbeat;
-            }
-            else
-            {
-                heartbeat2 = lastHeartbeat;
-            }
+            await Assert.That(firstServiceHasHeartbeat).IsTrue();
+            await Assert.That(secondServiceHasHeartbeat).IsFalse();
         }
-
-        await Assert.That(heartbeat1).IsNotNull();
-        await Assert.That(heartbeat2).IsNotNull();
-        await Assert.That(heartbeat1).IsNotEqualTo(heartbeat2);
     }
 
 

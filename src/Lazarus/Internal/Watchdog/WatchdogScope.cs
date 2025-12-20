@@ -37,19 +37,18 @@ internal class WatchdogScope<TService>: IDisposable
         }
         catch (Exception e)
         {
-            _logger.LogDebug(e, "Exception in action inside WatchdogScope");
             _exception = e;
-            throw; // Rethrow
+            throw;
         }
     }
 
     public void Dispose()
     {
-        if (!_disposed)
+        if (_disposed)
         {
-            _disposed = true;
             return;
         }
+        _disposed = true;
 
         if (_startTime is null)
         {
@@ -57,11 +56,9 @@ internal class WatchdogScope<TService>: IDisposable
             return;
         }
 
-
         DateTimeOffset endTime = _timeProvider.GetUtcNow();
         _logger.LogDebug("Executing action inside WatchdogScope. Starting at {StartTime}", endTime);
         Heartbeat report = new() { StartTime = _startTime.Value, EndTime = endTime, Exception = _exception, };
         _watchdogService.RegisterHeartbeat<TService>(report);
-        // TODO release managed resources here
     }
 }

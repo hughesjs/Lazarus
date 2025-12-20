@@ -2,6 +2,7 @@ using Lazarus.Internal.Service;
 using Lazarus.Internal.Watchdog;
 using Lazarus.Public;
 using Lazarus.Public.Watchdog;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 
@@ -22,12 +23,18 @@ public class LazarusServiceTests : IAsyncDisposable
         _tp = new();
         _watchdog = new InMemoryWatchdogService(_tp);
         _innerService = new();
+
+        ServiceCollection services = new();
+        services.AddLogging();
+        IServiceProvider serviceProvider = services.BuildServiceProvider();
+        WatchdogScopeFactory watchdogScopeFactory = new(serviceProvider, _tp, _watchdog);
+
         _ts = new(
             _loopTime,
             NullLogger<LazarusService<TestService>>.Instance,
             _tp,
-            _watchdog,
-            _innerService);
+            _innerService,
+            watchdogScopeFactory);
         _ctx = TestContext.Current?.Execution.CancellationToken?? CancellationToken.None;
     }
 
@@ -111,13 +118,16 @@ public class LazarusServiceTests : IAsyncDisposable
     {
         await _ts.StartAsync(_ctx);
 
+        // Need two of these to guarantee one completed execution as the first advance is the initial delay
         await AdvanceTime();
-        DateTimeOffset? firstHeartbeat = _watchdog.GetLastHeartbeat<TestService>();
-        await Assert.That(firstHeartbeat).IsNotNull();
+        await AdvanceTime();
+        Heartbeat? firstHeartbeat = _watchdog.GetLastHeartbeat<TestService>();
+        await AdvanceTime();
+        Heartbeat? secondHeartbeat = _watchdog.GetLastHeartbeat<TestService>();
 
-        await AdvanceTime();
-        DateTimeOffset? secondHeartbeat = _watchdog.GetLastHeartbeat<TestService>();
-        await Assert.That(secondHeartbeat!).IsNotEqualTo(firstHeartbeat);
+
+        await Assert.That(firstHeartbeat).IsNotNull();
+        await Assert.That(secondHeartbeat!.StartTime).IsNotEqualTo(firstHeartbeat!.StartTime);
     }
 
     private class TestService : IResilientService
