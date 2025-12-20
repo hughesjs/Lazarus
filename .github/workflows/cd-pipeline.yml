@@ -38,7 +38,7 @@ jobs:
           majorList: major, breaking
           minorList: minor, feat, feature
           noVersionBumpBehavior: patch
-          noNewCommitBehavior: error
+          noNewCommitBehavior: patch
 
       - name: Output SemVer
         id: semver-outputs

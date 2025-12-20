@@ -13,6 +13,22 @@
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <PackageId>Lazarus.Extensions.HealthChecks</PackageId>
+        <Version>1.0.0</Version>
+        <Authors>James Hughes</Authors>
+        <Company>James Hughes</Company>
+        <Description>ASP.NET Core health check integration for Lazarus resilient background services. Provides seamless health monitoring of background services with heartbeat tracking and configurable timeouts.</Description>
+        <Copyright>Copyright (c) 2025 James Hughes</Copyright>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/hughesjs/Lazarus</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/hughesjs/Lazarus</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageTags>healthchecks;health-monitoring;aspnetcore;backgroundservice;resilient;dotnet</PackageTags>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
     <ItemGroup>
       <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.1" />
       <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" Version="10.0.1" />
@@ -25,6 +41,11 @@
     <ItemGroup>
         <InternalsVisibleTo Include="Lazarus.Extensions.HealthChecks.Tests.Unit"/>
         <InternalsVisibleTo Include="Lazarus.Extensions.HealthChecks.Tests.Integration"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Include="../../README.md" CopyToOutputDirectory="Always" Condition="Exists('../../README.md')" />
+      <None Include="$(OutputPath)README.md" Pack="true" PackagePath="/" />
     </ItemGroup>
 
 </Project>
