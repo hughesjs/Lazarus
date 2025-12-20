@@ -85,15 +85,17 @@ public class HealthCheckIntegrationTests : IAsyncDisposable
         using JsonDocument doc = JsonDocument.Parse(content);
         JsonElement entries = doc.RootElement.GetProperty("entries");
 
+        // Technically order isn't gauranteed here but in practice I've never seen it fail.
+        // If this test is flakey, start here
         List<JsonProperty> testServiceEntries = entries.EnumerateObject()
             .Where(e => e.Name.Contains("TestService"))
             .ToList();
 
-        JsonElement data1 = testServiceEntries[0].Value.GetProperty("data");
-        JsonElement data2 = testServiceEntries[1].Value.GetProperty("data");
+        JsonElement serviceOneCheckData = testServiceEntries[0].Value.GetProperty("data");
+        JsonElement serviceTwoCheckData = testServiceEntries[1].Value.GetProperty("data");
 
-        bool firstServiceHasHeartbeat = data1.TryGetProperty("lastHeartbeat", out JsonElement _);
-        bool secondServiceHasHeartbeat = data2.TryGetProperty("lastHeartbeat", out JsonElement _);
+        bool firstServiceHasHeartbeat = serviceOneCheckData.TryGetProperty("lastHeartbeat", out JsonElement _);
+        bool secondServiceHasHeartbeat = serviceTwoCheckData.TryGetProperty("lastHeartbeat", out JsonElement _);
 
         using (Assert.Multiple())
         {
