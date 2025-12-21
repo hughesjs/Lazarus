@@ -65,7 +65,7 @@ public class HealthCheckIntegrationTests : IAsyncDisposable
     public async Task ServiceRunningReturnsHealthyResponse()
     {
         _timeProvider.Advance(LazarusTestWebApplicationFactory.IntervalTwo);
-        await _serviceTwo.PerformLoop(_ctx);
+        await _serviceTwo.WaitForLoopAsync(_ctx);
         HttpResponseMessage res = await _client.GetAsync("/health", _ctx);
         await Assert.That(res).IsSuccessStatusCode();
     }
@@ -76,8 +76,8 @@ public class HealthCheckIntegrationTests : IAsyncDisposable
     {
         _timeProvider.Advance((LazarusTestWebApplicationFactory.IntervalOne + LazarusTestWebApplicationFactory.IntervalTwo) / 2);
 
-        await _serviceOne.PerformLoop(_ctx);
-        await _serviceTwo.PerformLoop(_ctx);
+        await _serviceOne.WaitForLoopAsync(_ctx);
+        await _serviceTwo.WaitForLoopAsync(_ctx);
 
         HttpResponseMessage res = await _client.GetAsync("/health", _ctx);
 
