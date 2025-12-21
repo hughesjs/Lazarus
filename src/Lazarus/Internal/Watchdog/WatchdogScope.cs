@@ -59,7 +59,16 @@ internal class WatchdogScope<TService>: IDisposable
 
         DateTimeOffset endTime = _timeProvider.GetUtcNow();
         _logger.LogDebug("Disposing WatchdogScope. Ending at {EndTime}", endTime);
-        Heartbeat report = new() { StartTime = _startTime.Value, EndTime = endTime, Exception = _exception, };
-        _watchdogService.RegisterHeartbeat(report);
+        Heartbeat report = new() { StartTime = _startTime.Value, EndTime = endTime, Exception = _exception };
+
+        try // Need to make sure we don't throw in a disposer or Mads T will cry
+        {
+            _watchdogService.RegisterHeartbeat(report);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Error registering heartbeat for {Service} watchdog", typeof(TService));
+        }
+
     }
 }

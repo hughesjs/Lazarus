@@ -28,7 +28,7 @@ public static class HealthCheckExtensions
 
         builder.Services.Configure<LazarusHealthCheckConfiguration<TService>>(configuration);
 
-        return builder.AddCheck<LazarusServiceHealthCheck<TService>>(name, HealthStatus.Unhealthy, tags ?? []);
+        return builder.AddCheck<LazarusServiceHealthCheck<TService>>(name, null, tags ?? []);
     }
 
     /// <summary>
