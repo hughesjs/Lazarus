@@ -29,16 +29,22 @@ public static class ServiceCollectionExtensions
     /// The delay between each iteration of the service's <see cref="IResilientService.PerformLoop"/> method.
     /// Use <see cref="TimeSpan.Zero"/> for no delay between iterations.
     /// </param>
+    /// <param name="exceptionWindow">
+    /// The sliding time window for tracking exceptions. Exceptions older than this window will be discarded
+    /// from the watchdog service's exception history. Used by health checks to determine service health based on recent exceptions.
+    /// </param>
     /// <returns>The <see cref="IServiceCollection"/> for chaining additional registrations.</returns>
     /// <exception cref="LazarusConfigurationException">
     /// Thrown when attempting to register a service of the same type that is already registered.
     /// </exception>
     /// <example>
     /// <code>
-    /// services.AddLazarusService&lt;MyBackgroundService&gt;(TimeSpan.FromSeconds(5));
+    /// services.AddLazarusService&lt;MyBackgroundService&gt;(
+    ///     sp => TimeSpan.FromSeconds(5),
+    ///     exceptionWindow: TimeSpan.FromMinutes(5));
     /// </code>
     /// </example>
-    public static IServiceCollection AddLazarusService<TService>(this IServiceCollection services, Func<IServiceProvider, TimeSpan> loopDelay) where TService : class, IResilientService
+    public static IServiceCollection AddLazarusService<TService>(this IServiceCollection services, Func<IServiceProvider, TimeSpan> loopDelay, TimeSpan exceptionWindow) where TService : class, IResilientService
     {
         services.TryAddSingleton(TimeProvider.System);
 
@@ -51,7 +57,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<TService>();
 
         services.TryAddTransient<WatchdogScopeFactory>();
-        services.TryAddSingleton(typeof(IWatchdogService<>), typeof(InMemoryWatchdogService<>));
+        services.TryAddSingleton<IWatchdogService<TService>>(sp =>
+            new InMemoryWatchdogService<TService>(
+                sp.GetRequiredService<TimeProvider>(),
+                exceptionWindow));
 
         services.AddHostedService<LazarusService<TService>>(sp =>
         {

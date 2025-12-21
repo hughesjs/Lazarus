@@ -20,7 +20,7 @@ public class LazarusServiceHealthCheckTests
     [Test]
     public async Task NoHeartbeatReturnsUnhealthy()
     {
-        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider);
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider, TimeSpan.FromMinutes(5));
         LazarusServiceHealthCheck<TestService> healthCheck = new(watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
 
         HealthCheckResult result = await healthCheck.CheckHealthAsync(new());
@@ -35,7 +35,7 @@ public class LazarusServiceHealthCheckTests
     [Test]
     public async Task HeartbeatWithinTimeoutReturnsHealthy()
     {
-        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider);
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider, TimeSpan.FromMinutes(5));
         DateTimeOffset now = _timeProvider.GetUtcNow();
         watchdogService.RegisterHeartbeat(new()
         {
@@ -60,7 +60,7 @@ public class LazarusServiceHealthCheckTests
     [Test]
     public async Task HeartbeatExceedsTimeoutReturnsUnhealthy()
     {
-        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider);
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider, TimeSpan.FromMinutes(5));
         DateTimeOffset now = _timeProvider.GetUtcNow();
         watchdogService.RegisterHeartbeat(new()
         {
@@ -84,7 +84,7 @@ public class LazarusServiceHealthCheckTests
     [Test]
     public async Task MultipleHeartbeatsUsesLatest()
     {
-        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider);
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider, TimeSpan.FromMinutes(5));
         DateTimeOffset firstTime = _timeProvider.GetUtcNow();
         watchdogService.RegisterHeartbeat(new()
         {
@@ -115,8 +115,8 @@ public class LazarusServiceHealthCheckTests
     [Test]
     public async Task DifferentServiceTypesTrackedSeparately()
     {
-        InMemoryWatchdogService<Service1> watchdogService1 = new(_timeProvider);
-        InMemoryWatchdogService<Service2> watchdogService2 = new(_timeProvider);
+        InMemoryWatchdogService<Service1> watchdogService1 = new(_timeProvider, TimeSpan.FromMinutes(5));
+        InMemoryWatchdogService<Service2> watchdogService2 = new(_timeProvider, TimeSpan.FromMinutes(5));
 
         DateTimeOffset time1 = _timeProvider.GetUtcNow();
         watchdogService1.RegisterHeartbeat(new()
@@ -152,7 +152,7 @@ public class LazarusServiceHealthCheckTests
     [Test]
     public async Task MetadataContainsExpectedFields()
     {
-        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider);
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider, TimeSpan.FromMinutes(5));
         DateTimeOffset now = _timeProvider.GetUtcNow();
         watchdogService.RegisterHeartbeat(new()
         {
@@ -182,7 +182,7 @@ public class LazarusServiceHealthCheckTests
     [Test]
     public async Task HealthyResultIncludesTimingInMessage()
     {
-        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider);
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider, TimeSpan.FromMinutes(5));
         DateTimeOffset now = _timeProvider.GetUtcNow();
         watchdogService.RegisterHeartbeat(new()
         {
@@ -203,7 +203,7 @@ public class LazarusServiceHealthCheckTests
     [Test]
     public async Task HeartbeatProgressesThroughHealthStates()
     {
-        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider);
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider, TimeSpan.FromMinutes(5));
         DateTimeOffset initialTime = _timeProvider.GetUtcNow();
         watchdogService.RegisterHeartbeat(new()
         {
@@ -253,6 +253,159 @@ public class LazarusServiceHealthCheckTests
             await Assert.That(unhealthyResult.Status).IsEqualTo(HealthStatus.Unhealthy);
             await Assert.That(unhealthyResult.Description).Contains("Last heartbeat received too long ago");
             await Assert.That(unhealthyResult.Description).Contains("35");
+        }
+    }
+
+    [Test]
+    public async Task FewExceptionsReturnHealthyWithTransientMessage()
+    {
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider, TimeSpan.FromMinutes(5));
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+
+        // Register 1 heartbeat with exception (below degraded threshold of 2)
+        watchdogService.RegisterHeartbeat(new()
+        {
+            StartTime = now,
+            EndTime = now,
+            Exception = new InvalidOperationException("Transient error")
+        });
+        _timeProvider.Advance(TimeSpan.FromSeconds(10));
+
+        LazarusServiceHealthCheck<TestService> healthCheck = new(watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
+        HealthCheckResult result = await healthCheck.CheckHealthAsync(new());
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(result.Status).IsEqualTo(HealthStatus.Healthy);
+            await Assert.That(result.Description).Contains("likely transient");
+            await Assert.That(result.Data["exceptionsInWindow"]).IsEqualTo(1);
+        }
+    }
+
+    [Test]
+    public async Task ManyExceptionsReturnDegraded()
+    {
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider, TimeSpan.FromMinutes(5));
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+
+        // Register 3 heartbeats with exceptions (between degraded threshold 2 and unhealthy threshold 5)
+        for (int i = 0; i < 3; i++)
+        {
+            watchdogService.RegisterHeartbeat(new()
+            {
+                StartTime = now,
+                EndTime = now,
+                Exception = new InvalidOperationException($"Error {i}")
+            });
+            _timeProvider.Advance(TimeSpan.FromSeconds(10));
+        }
+
+        LazarusServiceHealthCheck<TestService> healthCheck = new(watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
+        HealthCheckResult result = await healthCheck.CheckHealthAsync(new());
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(result.Status).IsEqualTo(HealthStatus.Degraded);
+            await Assert.That(result.Description).Contains("3");
+            await Assert.That(result.Data["exceptionsInWindow"]).IsEqualTo(3);
+        }
+    }
+
+    [Test]
+    public async Task TooManyExceptionsReturnUnhealthy()
+    {
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider, TimeSpan.FromMinutes(5));
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+
+        // Register 6 heartbeats with exceptions (above unhealthy threshold of 5)
+        for (int i = 0; i < 6; i++)
+        {
+            watchdogService.RegisterHeartbeat(new()
+            {
+                StartTime = now,
+                EndTime = now,
+                Exception = new InvalidOperationException($"Error {i}")
+            });
+            _timeProvider.Advance(TimeSpan.FromSeconds(10));
+        }
+
+        LazarusServiceHealthCheck<TestService> healthCheck = new(watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
+        HealthCheckResult result = await healthCheck.CheckHealthAsync(new());
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(result.Status).IsEqualTo(HealthStatus.Unhealthy);
+            await Assert.That(result.Description).Contains("6");
+            await Assert.That(result.Data["exceptionsInWindow"]).IsEqualTo(6);
+        }
+    }
+
+    [Test]
+    public async Task OldExceptionsDontAffectHealth()
+    {
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider, TimeSpan.FromMinutes(5));
+        DateTimeOffset startTime = _timeProvider.GetUtcNow();
+
+        // Register 10 exceptions
+        for (int i = 0; i < 10; i++)
+        {
+            watchdogService.RegisterHeartbeat(new()
+            {
+                StartTime = startTime,
+                EndTime = startTime,
+                Exception = new InvalidOperationException($"Old error {i}")
+            });
+            _timeProvider.Advance(TimeSpan.FromSeconds(10));
+        }
+
+        // Advance time so all exceptions are outside the 5-minute window
+        _timeProvider.Advance(TimeSpan.FromMinutes(6));
+
+        // Register a recent heartbeat without exception
+        DateTimeOffset recentTime = _timeProvider.GetUtcNow();
+        watchdogService.RegisterHeartbeat(new()
+        {
+            StartTime = recentTime,
+            EndTime = recentTime,
+            Exception = null
+        });
+
+        LazarusServiceHealthCheck<TestService> healthCheck = new(watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
+        HealthCheckResult result = await healthCheck.CheckHealthAsync(new());
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(result.Status).IsEqualTo(HealthStatus.Healthy);
+            await Assert.That(result.Data["exceptionsInWindow"]).IsEqualTo(0);
+        }
+    }
+
+    [Test]
+    public async Task ExceptionCountAppearsInMetadata()
+    {
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider, TimeSpan.FromMinutes(5));
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+
+        // Register 4 heartbeats with exceptions
+        for (int i = 0; i < 4; i++)
+        {
+            watchdogService.RegisterHeartbeat(new()
+            {
+                StartTime = now,
+                EndTime = now,
+                Exception = new InvalidOperationException($"Error {i}")
+            });
+            _timeProvider.Advance(TimeSpan.FromSeconds(10));
+        }
+
+        LazarusServiceHealthCheck<TestService> healthCheck = new(watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
+        HealthCheckResult result = await healthCheck.CheckHealthAsync(new());
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(result.Data.ContainsKey("exceptionsInWindow")).IsTrue();
+            await Assert.That(result.Data["exceptionsInWindow"]).IsEqualTo(4);
+            await Assert.That(result.Data.ContainsKey("exceptionsStatus")).IsTrue();
         }
     }
 

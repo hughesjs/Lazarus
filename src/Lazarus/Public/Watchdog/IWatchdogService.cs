@@ -32,5 +32,10 @@ public interface IWatchdogService<TService>
     /// </returns>
     public Heartbeat? GetLastHeartbeat();
 
+    /// <summary>
+    /// Gets the list of exceptions that have occured within the configured sliding window.
+    /// </summary>
+    /// <returns>The <see cref="List&lt;Exception&gt;"/> containing all of the exceptions thrown within the window.</returns>
+    public List<Exception> GetExceptionsInWindow();
 
 }

@@ -23,18 +23,19 @@ internal class LazarusServiceHealthCheck<TService> : IHealthCheck
     public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = new())
     {
         Heartbeat? lastHeartbeat = _watchdogService.GetLastHeartbeat();
+        List<Exception> exceptions = _watchdogService.GetExceptionsInWindow();
         StringBuilder statusBuilder = new();
         HealthStatus heartbeatStatus = CheckHeartbeatStatus(statusBuilder, lastHeartbeat);
-        HealthStatus exceptionsStatus = CheckExceptionsStatus(statusBuilder, lastHeartbeat);
+        HealthStatus exceptionsStatus = CheckExceptionsStatus(statusBuilder, exceptions);
 
         // This gives us the worst status
         HealthStatus overallStatus = (HealthStatus)int.Min((int)heartbeatStatus, (int)exceptionsStatus);
 
-        return ConstructHealthCheckResult(heartbeatStatus, exceptionsStatus, overallStatus, lastHeartbeat, statusBuilder.ToString());
+        return ConstructHealthCheckResult(heartbeatStatus, exceptionsStatus, overallStatus, lastHeartbeat, statusBuilder.ToString(), exceptions.Count);
     }
 
     private Task<HealthCheckResult> ConstructHealthCheckResult(HealthStatus heartbeatStatus, HealthStatus exceptionsStatus, HealthStatus overallStatus,
-        Heartbeat? lastHeartbeat, string status)
+        Heartbeat? lastHeartbeat, string status, int exceptionCount)
     {
         TimeSpan? timePassed = lastHeartbeat is null ? null : _timeProvider.GetUtcNow() - lastHeartbeat.StartTime;
 
@@ -46,21 +47,35 @@ internal class LazarusServiceHealthCheck<TService> : IHealthCheck
             ["service"] = typeof(TService).Name,
             ["heartbeatStatus"] = heartbeatStatus,
             ["exceptionsStatus"] = exceptionsStatus,
+            ["exceptionsInWindow"] = exceptionCount,
         };
         return Task.FromResult(new HealthCheckResult(overallStatus, status, lastHeartbeat?.Exception, metaDict));
     }
 
-    private HealthStatus CheckExceptionsStatus(StringBuilder statusBuilder, Heartbeat? lastHeartbeat)
+    private HealthStatus CheckExceptionsStatus(StringBuilder statusBuilder, List<Exception> exceptions)
     {
-        // Temp implementation before sliding window is implemented
-        if (lastHeartbeat?.Exception is not null)
+        int exceptionCount = exceptions.Count;
+
+        if (exceptionCount == 0)
         {
-            statusBuilder.AppendLine("Exception encountered during last loop");
+            statusBuilder.AppendLine("No exceptions found");
+            return HealthStatus.Healthy;
+        }
+
+        if (exceptionCount < _configuration.CurrentValue.DegradedExceptionCountThreshold)
+        {
+            statusBuilder.AppendLine($"Some exceptions found ({exceptionCount}), these are likely transient");
+            return HealthStatus.Healthy;
+        }
+
+        if (exceptionCount < _configuration.CurrentValue.UnhealthyExceptionCountThreshold)
+        {
+            statusBuilder.AppendLine($"Some exceptions found ({exceptionCount}), service may be experiencing issues");
             return HealthStatus.Degraded;
         }
 
-        statusBuilder.AppendLine("No exceptions encountered in last loop");
-        return HealthStatus.Healthy;
+        statusBuilder.AppendLine($"Many exceptions found ({exceptionCount}), service is experiencing issues");
+        return HealthStatus.Unhealthy;
     }
 
 

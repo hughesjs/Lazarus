@@ -21,7 +21,7 @@ public class LazarusServiceTests : IAsyncDisposable
     public LazarusServiceTests()
     {
         _tp = new();
-        _watchdog = new InMemoryWatchdogService<TestService>(_tp);
+        _watchdog = new InMemoryWatchdogService<TestService>(_tp, TimeSpan.FromMinutes(5));
         _innerService = new();
 
         ServiceCollection services = new();

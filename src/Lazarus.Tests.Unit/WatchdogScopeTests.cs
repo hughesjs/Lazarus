@@ -13,7 +13,7 @@ public class WatchdogScopeTests
     public WatchdogScopeTests()
     {
         _timeProvider = new();
-        _watchdogService = new(_timeProvider);
+        _watchdogService = new(_timeProvider, TimeSpan.FromMinutes(5));
     }
 
     [Test]
@@ -235,7 +235,7 @@ public class WatchdogScopeTests
     public async Task TracksDifferentServiceTypesSeparately()
     {
         DateTimeOffset timeA = _timeProvider.GetUtcNow();
-        InMemoryWatchdogService<TestServiceA> watchdogA = new(_timeProvider);
+        InMemoryWatchdogService<TestServiceA> watchdogA = new(_timeProvider, TimeSpan.FromMinutes(5));
         WatchdogScope<TestServiceA> scopeA = new(
             NullLogger<WatchdogScope<TestServiceA>>.Instance,
             _timeProvider,
@@ -249,7 +249,7 @@ public class WatchdogScopeTests
 
         _timeProvider.Advance(TimeSpan.FromSeconds(5));
         DateTimeOffset timeB = _timeProvider.GetUtcNow();
-        InMemoryWatchdogService<TestServiceB> watchdogB = new(_timeProvider);
+        InMemoryWatchdogService<TestServiceB> watchdogB = new(_timeProvider, TimeSpan.FromMinutes(5));
         WatchdogScope<TestServiceB> scopeB = new(
             NullLogger<WatchdogScope<TestServiceB>>.Instance,
             _timeProvider,

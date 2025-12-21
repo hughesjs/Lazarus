@@ -16,7 +16,10 @@ public class HealthCheckExtensionsTests
         ServiceCollection services = new();
         services.AddLogging();
         services.AddSingleton<TimeProvider>(new FakeTimeProvider());
-        services.AddSingleton<IWatchdogService<TestService>, InMemoryWatchdogService<TestService>>();
+        services.AddSingleton<IWatchdogService<TestService>>(sp =>
+            new InMemoryWatchdogService<TestService>(
+                sp.GetRequiredService<TimeProvider>(),
+                TimeSpan.FromMinutes(5)));
 
         Dictionary<string, string?> configDict = new()
         {
@@ -48,7 +51,10 @@ public class HealthCheckExtensionsTests
         ServiceCollection services = new();
         services.AddLogging();
         services.AddSingleton<TimeProvider>(new FakeTimeProvider());
-        services.AddSingleton<IWatchdogService<TestService>, InMemoryWatchdogService<TestService>>();
+        services.AddSingleton<IWatchdogService<TestService>>(sp =>
+            new InMemoryWatchdogService<TestService>(
+                sp.GetRequiredService<TimeProvider>(),
+                TimeSpan.FromMinutes(5)));
 
         Dictionary<string, string?> configDict = new()
         {
@@ -80,7 +86,10 @@ public class HealthCheckExtensionsTests
         ServiceCollection services = new();
         services.AddLogging();
         services.AddSingleton<TimeProvider>(new FakeTimeProvider());
-        services.AddSingleton<IWatchdogService<TestService>, InMemoryWatchdogService<TestService>>();
+        services.AddSingleton<IWatchdogService<TestService>>(sp =>
+            new InMemoryWatchdogService<TestService>(
+                sp.GetRequiredService<TimeProvider>(),
+                TimeSpan.FromMinutes(5)));
 
         Dictionary<string, string?> configDict = new()
         {

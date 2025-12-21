@@ -17,7 +17,7 @@ public class ServiceCollectionExtensionsTests
         ServiceCollection services = new();
 
         services.AddLogging(builder => builder.AddProvider(NullLoggerProvider.Instance));
-        services.AddLazarusService<TestService>(_ => shortDelay);
+        services.AddLazarusService<TestService>(_ => shortDelay, exceptionWindow: TimeSpan.FromMinutes(5));
 
         await using ServiceProvider provider = services.BuildServiceProvider();
 
@@ -48,9 +48,9 @@ public class ServiceCollectionExtensionsTests
     {
         ServiceCollection services = new();
         services.AddLogging(builder => builder.AddProvider(NullLoggerProvider.Instance));
-        services.AddLazarusService<TestService>(_ => TimeSpan.FromSeconds(1));
+        services.AddLazarusService<TestService>(_ => TimeSpan.FromSeconds(1), exceptionWindow: TimeSpan.FromMinutes(5));
 
-        await Assert.That(() => services.AddLazarusService<TestService>(_ => TimeSpan.FromSeconds(1)))
+        await Assert.That(() => services.AddLazarusService<TestService>(_ => TimeSpan.FromSeconds(1), exceptionWindow: TimeSpan.FromMinutes(5)))
             .Throws<LazarusConfigurationException>();
     }
 

@@ -44,17 +44,17 @@ public class HealthCheckIntegrationTests : IAsyncDisposable
     [Test]
     public async Task NoHeartbeatReturnsUnhealthyResponse()
     {
-        // Kill the first-loop heartbeat with reflection to avoid needing to expose the internals
+        // Clear the heartbeat list with reflection to avoid needing to expose the internals
         // or change the implementation just to support this one test
 #pragma warning disable CA2201
         IWatchdogService<TestService<object>> watchdogOne = _factory.Services.GetRequiredService<IWatchdogService<TestService<object>>>();
         IWatchdogService<TestService<string>> watchdogTwo = _factory.Services.GetRequiredService<IWatchdogService<TestService<string>>>();
 
-        FieldInfo lastHeartbeatFieldOne = watchdogOne.GetType().GetField("_lastHeartbeat", BindingFlags.NonPublic | BindingFlags.Instance) ?? throw new("Did you change the internal field of the watchdog?");
-        FieldInfo lastHeartbeatFieldTwo = watchdogTwo.GetType().GetField("_lastHeartbeat", BindingFlags.NonPublic | BindingFlags.Instance) ?? throw new("Did you change the internal field of the watchdog?");
+        FieldInfo recentHeartbeatsFieldOne = watchdogOne.GetType().GetField("_recentHeartbeats", BindingFlags.NonPublic | BindingFlags.Instance) ?? throw new("Did you change the internal field of the watchdog?");
+        FieldInfo recentHeartbeatsFieldTwo = watchdogTwo.GetType().GetField("_recentHeartbeats", BindingFlags.NonPublic | BindingFlags.Instance) ?? throw new("Did you change the internal field of the watchdog?");
 
-        lastHeartbeatFieldOne.SetValue(watchdogOne, null);
-        lastHeartbeatFieldTwo.SetValue(watchdogTwo, null);
+        recentHeartbeatsFieldOne.SetValue(watchdogOne, new List<Heartbeat>());
+        recentHeartbeatsFieldTwo.SetValue(watchdogTwo, new List<Heartbeat>());
 #pragma warning restore CA2201
 
         HttpResponseMessage res = await _client.GetAsync("/health", _ctx);

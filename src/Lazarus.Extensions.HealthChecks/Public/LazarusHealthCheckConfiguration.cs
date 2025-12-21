@@ -28,10 +28,10 @@ public record LazarusHealthCheckConfiguration<TService>
     /// Gets or sets the number of exceptions within the sliding window that triggers a degraded status.
     /// Should be less than <see cref="UnhealthyExceptionCountThreshold"/>.
     /// </summary>
-    public required int DegradedExceptionCountThreshold { get; init; }
+    public required uint DegradedExceptionCountThreshold { get; init; }
 
     /// <summary>
     /// Gets or sets the number of exceptions within the sliding window that triggers an unhealthy status.
     /// </summary>
-    public required int UnhealthyExceptionCountThreshold { get; init; }
+    public required uint UnhealthyExceptionCountThreshold { get; init; }
 }
