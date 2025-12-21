@@ -4,6 +4,7 @@ using Lazarus.Extensions.HealthChecks.Tests.Integration.App;
 using Lazarus.Public.Configuration;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 
 namespace Lazarus.Extensions.HealthChecks.Tests.Integration.Fixture;
 
@@ -21,11 +22,32 @@ public class LazarusTestWebApplicationFactory : WebApplicationFactory<LazarusTes
                     .UseContentRoot(Directory.GetCurrentDirectory())
                     .ConfigureServices(services =>
                     {
+                        Dictionary<string, string?> configDict = new()
+                        {
+                            ["HealthChecks:TestServiceString:UnhealthyTimeSinceLastHeartbeat"] = (IntervalOne * 2).ToString(),
+                            ["HealthChecks:TestServiceString:DegradedTimeSinceLastHeartbeat"] = (IntervalOne * 1.5).ToString(),
+                            ["HealthChecks:TestServiceString:UnhealthyExceptionCountThreshold"] = "5",
+                            ["HealthChecks:TestServiceString:DegradedExceptionCountThreshold"] = "2",
+                            ["HealthChecks:TestServiceString:ExceptionCounterSlidingWindow"] = "00:05:00",
+
+                            ["HealthChecks:TestServiceObject:UnhealthyTimeSinceLastHeartbeat"] = (IntervalTwo * 2).ToString(),
+                            ["HealthChecks:TestServiceObject:DegradedTimeSinceLastHeartbeat"] = (IntervalTwo * 1.5).ToString(),
+                            ["HealthChecks:TestServiceObject:UnhealthyExceptionCountThreshold"] = "5",
+                            ["HealthChecks:TestServiceObject:DegradedExceptionCountThreshold"] = "2",
+                            ["HealthChecks:TestServiceObject:ExceptionCounterSlidingWindow"] = "00:05:00"
+                        };
+
+                        IConfiguration configuration = new ConfigurationBuilder()
+                            .AddInMemoryCollection(configDict)
+                            .Build();
+
                         services.AddLazarusService<TestService<string>>(IntervalOne);
                         services.AddLazarusService<TestService<object>>(IntervalTwo);
                         services.AddHealthChecks()
-                            .AddLazarusHealthCheck<TestService<string>>(IntervalOne * 2)
-                            .AddLazarusHealthCheck<TestService<object>>(IntervalTwo * 2);
+                            .AddLazarusHealthCheck<TestService<string>>(
+                                configuration.GetSection("HealthChecks:TestServiceString"))
+                            .AddLazarusHealthCheck<TestService<object>>(
+                                configuration.GetSection("HealthChecks:TestServiceObject"));
                     })
                     .Configure(app =>
                     {

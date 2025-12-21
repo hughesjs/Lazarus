@@ -1,39 +1,92 @@
+using System.Text;
+using Lazarus.Extensions.HealthChecks.Public;
 using Lazarus.Public.Watchdog;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 
 namespace Lazarus.Extensions.HealthChecks.Internal;
 
-internal class LazarusServiceHealthCheck<TService>: IHealthCheck
+internal class LazarusServiceHealthCheck<TService> : IHealthCheck
 {
-    private readonly TimeSpan _timeout;
     private readonly TimeProvider _timeProvider;
+    private readonly IOptionsMonitor<LazarusHealthCheckConfiguration<TService>> _configuration;
     private readonly IWatchdogService _watchdogService;
 
-    public LazarusServiceHealthCheck(TimeSpan timeout, IWatchdogService watchdogService, TimeProvider timeProvider)
+    public LazarusServiceHealthCheck(IWatchdogService watchdogService, TimeProvider timeProvider,
+        IOptionsMonitor<LazarusHealthCheckConfiguration<TService>> configuration)
     {
-        _timeout = timeout;
         _watchdogService = watchdogService;
         _timeProvider = timeProvider;
+        _configuration = configuration;
     }
 
     public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = new())
     {
         Heartbeat? lastHeartbeat = _watchdogService.GetLastHeartbeat<TService>();
+        StringBuilder statusBuilder = new();
+        HealthStatus heartbeatStatus = CheckHeartbeatStatus(statusBuilder, lastHeartbeat);
+        HealthStatus exceptionsStatus = CheckExceptionsStatus(statusBuilder, lastHeartbeat);
+
+        // This gives us the worst status
+        HealthStatus overallStatus = (HealthStatus)int.Min((int)heartbeatStatus, (int)exceptionsStatus);
+
+        return ConstructHealthCheckResult(heartbeatStatus, exceptionsStatus, overallStatus, lastHeartbeat, statusBuilder.ToString());
+    }
+
+    private Task<HealthCheckResult> ConstructHealthCheckResult(HealthStatus heartbeatStatus, HealthStatus exceptionsStatus, HealthStatus overallStatus,
+        Heartbeat? lastHeartbeat, string status)
+    {
+        TimeSpan? timePassed = lastHeartbeat is null ? null : _timeProvider.GetUtcNow() - lastHeartbeat.StartTime;
+
+        Dictionary<string, object> metaDict = new()
+        {
+            ["lastHeartbeat"] = lastHeartbeat,
+            ["timePassed"] = timePassed,
+            ["configuration"] = _configuration.CurrentValue,
+            ["service"] = typeof(TService).Name,
+            ["heartbeatStatus"] = heartbeatStatus,
+            ["exceptionsStatus"] = exceptionsStatus,
+        };
+        return Task.FromResult(new HealthCheckResult(overallStatus, status, lastHeartbeat?.Exception, metaDict));
+    }
+
+    private HealthStatus CheckExceptionsStatus(StringBuilder statusBuilder, Heartbeat? lastHeartbeat)
+    {
+        // Temp implementation before sliding window is implemented
+        if (lastHeartbeat?.Exception is not null)
+        {
+            statusBuilder.AppendLine("Exception encountered during last loop");
+            return HealthStatus.Degraded;
+        }
+
+        statusBuilder.AppendLine("No exceptions encountered in last loop");
+        return HealthStatus.Healthy;
+    }
 
 
+    private HealthStatus CheckHeartbeatStatus(StringBuilder statusBuilder, Heartbeat? lastHeartbeat)
+    {
         if (lastHeartbeat is null)
         {
-            return Task.FromResult(new HealthCheckResult(HealthStatus.Unhealthy, "No heartbeat ever received, did you register your service?"));
+            statusBuilder.AppendLine("No heartbeat received, have you registered your service?");
+            return HealthStatus.Unhealthy;
         }
 
         TimeSpan timePassed = _timeProvider.GetUtcNow() - lastHeartbeat.StartTime;
-        Dictionary<string, object> metaDict = new() { ["lastHeartbeat"] = lastHeartbeat, ["timePassed"] = timePassed, ["timeout"] = _timeout, ["service"] =  typeof(TService).Name};
 
-        if (timePassed > _timeout)
+        if (timePassed > _configuration.CurrentValue.UnhealthyTimeSinceLastHeartbeat)
         {
-            return Task.FromResult(new HealthCheckResult(HealthStatus.Unhealthy, $"Last heartbeat received too long ago ({timePassed.TotalSeconds}s ago)", data: metaDict));
+            statusBuilder.AppendLine($"Last heartbeat received too long ago ({timePassed.TotalSeconds}s ago)");
+            return HealthStatus.Unhealthy;
         }
 
-        return Task.FromResult(HealthCheckResult.Healthy($"Last heartbeat received in good time ({timePassed.TotalSeconds}s ago)", data: metaDict));
+        if (timePassed > _configuration.CurrentValue.DegradedTimeSinceLastHeartbeat)
+        {
+            statusBuilder.AppendLine($"Last heartbeat received too long ago ({timePassed.TotalSeconds}s ago)");
+            return HealthStatus.Degraded;
+        }
+
+        statusBuilder.AppendLine($"Last heartbeat received in good time ({timePassed.TotalSeconds}s ago)");
+        return HealthStatus.Healthy;
     }
 }

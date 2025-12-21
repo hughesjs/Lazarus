@@ -23,7 +23,6 @@ internal class InMemoryWatchdogService: IWatchdogService
         );
 
 
-    public Heartbeat? GetLastHeartbeat<TService>() =>
-        _lastHeartbeats.GetValueOrDefault(typeof(TService));
+    public Heartbeat? GetLastHeartbeat<TService>() => _lastHeartbeats.GetValueOrDefault(typeof(TService));
 
 }

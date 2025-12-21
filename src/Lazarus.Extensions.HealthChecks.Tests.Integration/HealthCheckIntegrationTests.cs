@@ -100,7 +100,7 @@ public class HealthCheckIntegrationTests : IAsyncDisposable
         using (Assert.Multiple())
         {
             await Assert.That(firstServiceHasHeartbeat).IsTrue();
-            await Assert.That(secondServiceHasHeartbeat).IsFalse();
+            await Assert.That(secondServiceHasHeartbeat).IsTrue();
         }
     }
 
