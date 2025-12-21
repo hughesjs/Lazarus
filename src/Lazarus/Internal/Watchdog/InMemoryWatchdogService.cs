@@ -1,28 +1,23 @@
-using System.Collections.Concurrent;
 using Lazarus.Public.Watchdog;
 
 namespace Lazarus.Internal.Watchdog;
 
-internal class InMemoryWatchdogService: IWatchdogService
+internal class InMemoryWatchdogService<TService>: IWatchdogService<TService>
 {
-    private readonly ConcurrentDictionary<Type, Heartbeat> _lastHeartbeats;
+    private Heartbeat? _lastHeartbeat;
     private readonly TimeProvider _timeProvider;
 
     public InMemoryWatchdogService(TimeProvider timeProvider)
     {
         _timeProvider = timeProvider;
-        _lastHeartbeats = new();
+
     }
 
-    public void RegisterHeartbeat<TService>(Heartbeat report) =>
+    public void RegisterHeartbeat(Heartbeat report) =>
         // This is needed to ensure that we're resilient to time-skew
-        _lastHeartbeats.AddOrUpdate(
-            typeof(TService),
-            report,
-            (_, existing) => report.StartTime > existing.StartTime ? report : existing
-        );
+        _lastHeartbeat = report;
 
 
-    public Heartbeat? GetLastHeartbeat<TService>() => _lastHeartbeats.GetValueOrDefault(typeof(TService));
+    public Heartbeat? GetLastHeartbeat() => _lastHeartbeat;
 
 }

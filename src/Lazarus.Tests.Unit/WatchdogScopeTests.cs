@@ -8,7 +8,7 @@ namespace Lazarus.Tests.Unit;
 public class WatchdogScopeTests
 {
     private readonly FakeTimeProvider _timeProvider;
-    private readonly InMemoryWatchdogService _watchdogService;
+    private readonly InMemoryWatchdogService<TestService> _watchdogService;
 
     public WatchdogScopeTests()
     {
@@ -31,7 +31,7 @@ public class WatchdogScopeTests
             await scope.ExecuteAsync(async () => await Task.CompletedTask);
         }
 
-        Heartbeat? heartbeat = _watchdogService.GetLastHeartbeat<TestService>();
+        Heartbeat? heartbeat = _watchdogService.GetLastHeartbeat();
         using (Assert.Multiple())
         {
             await Assert.That(heartbeat).IsNotNull();
@@ -64,7 +64,7 @@ public class WatchdogScopeTests
             thrownException = ex;
         }
 
-        Heartbeat? heartbeat = _watchdogService.GetLastHeartbeat<TestService>();
+        Heartbeat? heartbeat = _watchdogService.GetLastHeartbeat();
         using (Assert.Multiple())
         {
             await Assert.That(thrownException).IsEqualTo(expectedException);
@@ -96,7 +96,7 @@ public class WatchdogScopeTests
             // Expected
         }
 
-        Heartbeat? heartbeat = _watchdogService.GetLastHeartbeat<TestService>();
+        Heartbeat? heartbeat = _watchdogService.GetLastHeartbeat();
         using (Assert.Multiple())
         {
             await Assert.That(heartbeat).IsNotNull();
@@ -146,7 +146,7 @@ public class WatchdogScopeTests
 
         scope.Dispose();
 
-        Heartbeat? heartbeat = _watchdogService.GetLastHeartbeat<TestService>();
+        Heartbeat? heartbeat = _watchdogService.GetLastHeartbeat();
         await Assert.That(heartbeat).IsNull();
     }
 
@@ -162,9 +162,9 @@ public class WatchdogScopeTests
         await scope.ExecuteAsync(async () => await Task.CompletedTask);
 
         scope.Dispose();
-        Heartbeat? firstHeartbeat = _watchdogService.GetLastHeartbeat<TestService>();
+        Heartbeat? firstHeartbeat = _watchdogService.GetLastHeartbeat();
         scope.Dispose();
-        Heartbeat? secondHeartbeat = _watchdogService.GetLastHeartbeat<TestService>();
+        Heartbeat? secondHeartbeat = _watchdogService.GetLastHeartbeat();
 
         using (Assert.Multiple())
         {
@@ -192,7 +192,7 @@ public class WatchdogScopeTests
             });
         }
 
-        Heartbeat? heartbeat = _watchdogService.GetLastHeartbeat<TestService>();
+        Heartbeat? heartbeat = _watchdogService.GetLastHeartbeat();
         using (Assert.Multiple())
         {
             await Assert.That(heartbeat).IsNotNull();
@@ -222,7 +222,7 @@ public class WatchdogScopeTests
             _timeProvider.Advance(TimeSpan.FromSeconds(2));
         }
 
-        Heartbeat? heartbeat = _watchdogService.GetLastHeartbeat<TestService>();
+        Heartbeat? heartbeat = _watchdogService.GetLastHeartbeat();
         using (Assert.Multiple())
         {
             await Assert.That(heartbeat).IsNotNull();
@@ -235,10 +235,11 @@ public class WatchdogScopeTests
     public async Task TracksDifferentServiceTypesSeparately()
     {
         DateTimeOffset timeA = _timeProvider.GetUtcNow();
+        InMemoryWatchdogService<TestServiceA> watchdogA = new(_timeProvider);
         WatchdogScope<TestServiceA> scopeA = new(
             NullLogger<WatchdogScope<TestServiceA>>.Instance,
             _timeProvider,
-            _watchdogService
+            watchdogA
         );
 
         using (scopeA)
@@ -248,10 +249,11 @@ public class WatchdogScopeTests
 
         _timeProvider.Advance(TimeSpan.FromSeconds(5));
         DateTimeOffset timeB = _timeProvider.GetUtcNow();
+        InMemoryWatchdogService<TestServiceB> watchdogB = new(_timeProvider);
         WatchdogScope<TestServiceB> scopeB = new(
             NullLogger<WatchdogScope<TestServiceB>>.Instance,
             _timeProvider,
-            _watchdogService
+            watchdogB
         );
 
         using (scopeB)
@@ -259,8 +261,8 @@ public class WatchdogScopeTests
             await scopeB.ExecuteAsync(async () => await Task.CompletedTask);
         }
 
-        Heartbeat? heartbeatA = _watchdogService.GetLastHeartbeat<TestServiceA>();
-        Heartbeat? heartbeatB = _watchdogService.GetLastHeartbeat<TestServiceB>();
+        Heartbeat? heartbeatA = watchdogA.GetLastHeartbeat();
+        Heartbeat? heartbeatB = watchdogB.GetLastHeartbeat();
 
         using (Assert.Multiple())
         {
@@ -292,7 +294,7 @@ public class WatchdogScopeTests
             });
         }
 
-        Heartbeat? heartbeat = _watchdogService.GetLastHeartbeat<TestService>();
+        Heartbeat? heartbeat = _watchdogService.GetLastHeartbeat();
         using (Assert.Multiple())
         {
             await Assert.That(actionCompleted).IsTrue();
@@ -329,7 +331,7 @@ public class WatchdogScopeTests
             exception = ex;
         }
 
-        Heartbeat? heartbeat = _watchdogService.GetLastHeartbeat<TestService>();
+        Heartbeat? heartbeat = _watchdogService.GetLastHeartbeat();
         using (Assert.Multiple())
         {
             await Assert.That(exception).IsNotNull();

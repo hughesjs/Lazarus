@@ -10,9 +10,9 @@ internal class LazarusServiceHealthCheck<TService> : IHealthCheck
 {
     private readonly TimeProvider _timeProvider;
     private readonly IOptionsMonitor<LazarusHealthCheckConfiguration<TService>> _configuration;
-    private readonly IWatchdogService _watchdogService;
+    private readonly IWatchdogService<TService> _watchdogService;
 
-    public LazarusServiceHealthCheck(IWatchdogService watchdogService, TimeProvider timeProvider,
+    public LazarusServiceHealthCheck(IWatchdogService<TService> watchdogService, TimeProvider timeProvider,
         IOptionsMonitor<LazarusHealthCheckConfiguration<TService>> configuration)
     {
         _watchdogService = watchdogService;
@@ -22,7 +22,7 @@ internal class LazarusServiceHealthCheck<TService> : IHealthCheck
 
     public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = new())
     {
-        Heartbeat? lastHeartbeat = _watchdogService.GetLastHeartbeat<TService>();
+        Heartbeat? lastHeartbeat = _watchdogService.GetLastHeartbeat();
         StringBuilder statusBuilder = new();
         HealthStatus heartbeatStatus = CheckHeartbeatStatus(statusBuilder, lastHeartbeat);
         HealthStatus exceptionsStatus = CheckExceptionsStatus(statusBuilder, lastHeartbeat);

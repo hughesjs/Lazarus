@@ -13,7 +13,7 @@ public class LazarusServiceTests : IAsyncDisposable
     private readonly LazarusService<TestService> _ts;
     private readonly TestService _innerService;
     private readonly FakeTimeProvider _tp;
-    private readonly IWatchdogService _watchdog;
+    private readonly IWatchdogService<TestService> _watchdog;
     private readonly CancellationToken _ctx;
 
     private readonly TimeSpan _loopTime = TimeSpan.FromSeconds(5);
@@ -21,13 +21,14 @@ public class LazarusServiceTests : IAsyncDisposable
     public LazarusServiceTests()
     {
         _tp = new();
-        _watchdog = new InMemoryWatchdogService(_tp);
+        _watchdog = new InMemoryWatchdogService<TestService>(_tp);
         _innerService = new();
 
         ServiceCollection services = new();
         services.AddLogging();
+        services.AddSingleton<IWatchdogService<TestService>>(_watchdog);
         IServiceProvider serviceProvider = services.BuildServiceProvider();
-        WatchdogScopeFactory watchdogScopeFactory = new(serviceProvider, _tp, _watchdog);
+        WatchdogScopeFactory watchdogScopeFactory = new(serviceProvider, _tp);
 
         _ts = new(
             _loopTime,
@@ -121,9 +122,9 @@ public class LazarusServiceTests : IAsyncDisposable
         // Need two of these to guarantee one completed execution as the first advance is the initial delay
         await AdvanceTime();
         await AdvanceTime();
-        Heartbeat? firstHeartbeat = _watchdog.GetLastHeartbeat<TestService>();
+        Heartbeat? firstHeartbeat = _watchdog.GetLastHeartbeat();
         await AdvanceTime();
-        Heartbeat? secondHeartbeat = _watchdog.GetLastHeartbeat<TestService>();
+        Heartbeat? secondHeartbeat = _watchdog.GetLastHeartbeat();
 
 
         await Assert.That(firstHeartbeat).IsNotNull();

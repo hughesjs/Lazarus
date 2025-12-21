@@ -38,10 +38,9 @@ public static class ServiceCollectionExtensions
     /// services.AddLazarusService&lt;MyBackgroundService&gt;(TimeSpan.FromSeconds(5));
     /// </code>
     /// </example>
-    public static IServiceCollection AddLazarusService<TService>(this IServiceCollection services, TimeSpan loopDelay) where TService : class, IResilientService
+    public static IServiceCollection AddLazarusService<TService>(this IServiceCollection services, Func<IServiceProvider, TimeSpan> loopDelay) where TService : class, IResilientService
     {
         services.TryAddSingleton(TimeProvider.System);
-        services.TryAddSingleton<IWatchdogService, InMemoryWatchdogService>();
 
         // This restriction may prove unnecessary later
         if (services.Any(s => s.ServiceType == typeof(TService)))
@@ -52,6 +51,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<TService>();
 
         services.TryAddTransient<WatchdogScopeFactory>();
+        services.TryAddSingleton(typeof(IWatchdogService<>), typeof(InMemoryWatchdogService<>));
 
         services.AddHostedService<LazarusService<TService>>(sp =>
         {
@@ -59,7 +59,7 @@ public static class ServiceCollectionExtensions
             ILogger<LazarusService<TService>> logger = sp.GetRequiredService<ILogger<LazarusService<TService>>>();
             TimeProvider timeProvider = sp.GetRequiredService<TimeProvider>();
             WatchdogScopeFactory watchdog = sp.GetRequiredService<WatchdogScopeFactory>();
-            return new(loopDelay, logger, timeProvider, inner, watchdog);
+            return new(loopDelay(sp), logger, timeProvider, inner, watchdog);
         });
         return services;
     }

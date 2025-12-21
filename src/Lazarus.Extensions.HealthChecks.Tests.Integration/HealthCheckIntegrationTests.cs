@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
 using Lazarus.Extensions.HealthChecks.Tests.Integration.App;
@@ -16,7 +15,6 @@ public class HealthCheckIntegrationTests : IAsyncDisposable
     private readonly WebApplicationFactory<LazarusTestWebApplicationFactory> _factory;
     private readonly HttpClient _client;
     private readonly FakeTimeProvider _timeProvider;
-    private readonly IWatchdogService _watchdog;
     private readonly TestService<object> _serviceOne;
     private readonly TestService<string> _serviceTwo;
     private readonly CancellationToken _ctx;
@@ -35,7 +33,6 @@ public class HealthCheckIntegrationTests : IAsyncDisposable
                 });
             });
 
-        _watchdog = _factory.Services.GetRequiredService<IWatchdogService>();
         _serviceOne = _factory.Services.GetRequiredService<TestService<object>>();
         _serviceTwo = _factory.Services.GetRequiredService<TestService<string>>();
 
@@ -48,12 +45,16 @@ public class HealthCheckIntegrationTests : IAsyncDisposable
     public async Task NoHeartbeatReturnsUnhealthyResponse()
     {
         // Kill the first-loop heartbeat with reflection to avoid needing to expose the internals
-        // or change the implementation just to support this one tests
+        // or change the implementation just to support this one test
 #pragma warning disable CA2201
-        FieldInfo lastHeartbeatsField = _watchdog.GetType().GetField("_lastHeartbeats", BindingFlags.NonPublic | BindingFlags.Instance) ?? throw new("Did you change the internal field of the watchdog?");
-        ConcurrentDictionary<Type, Heartbeat> lastHeartbeats = (ConcurrentDictionary<Type, Heartbeat>)lastHeartbeatsField.GetValue(_watchdog)!;
-        MethodInfo clear = lastHeartbeats.GetType().GetMethod("Clear") ?? throw new("Did you change the internal field of the watchdog?");
-        clear.Invoke(lastHeartbeats, []);
+        IWatchdogService<TestService<object>> watchdogOne = _factory.Services.GetRequiredService<IWatchdogService<TestService<object>>>();
+        IWatchdogService<TestService<string>> watchdogTwo = _factory.Services.GetRequiredService<IWatchdogService<TestService<string>>>();
+
+        FieldInfo lastHeartbeatFieldOne = watchdogOne.GetType().GetField("_lastHeartbeat", BindingFlags.NonPublic | BindingFlags.Instance) ?? throw new("Did you change the internal field of the watchdog?");
+        FieldInfo lastHeartbeatFieldTwo = watchdogTwo.GetType().GetField("_lastHeartbeat", BindingFlags.NonPublic | BindingFlags.Instance) ?? throw new("Did you change the internal field of the watchdog?");
+
+        lastHeartbeatFieldOne.SetValue(watchdogOne, null);
+        lastHeartbeatFieldTwo.SetValue(watchdogTwo, null);
 #pragma warning restore CA2201
 
         HttpResponseMessage res = await _client.GetAsync("/health", _ctx);

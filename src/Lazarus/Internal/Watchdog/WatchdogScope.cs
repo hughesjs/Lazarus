@@ -7,14 +7,14 @@ internal class WatchdogScope<TService>: IDisposable
 {
     private readonly ILogger<WatchdogScope<TService>> _logger;
     private readonly TimeProvider _timeProvider;
-    private readonly IWatchdogService _watchdogService;
+    private readonly IWatchdogService<TService> _watchdogService;
 
     private DateTimeOffset? _startTime;
     private Exception? _exception;
     private bool _hasRan;
     private bool _disposed;
 
-    public WatchdogScope(ILogger<WatchdogScope<TService>> logger, TimeProvider timeProvider, IWatchdogService watchdogService)
+    public WatchdogScope(ILogger<WatchdogScope<TService>> logger, TimeProvider timeProvider, IWatchdogService<TService> watchdogService)
     {
         _logger = logger;
         _timeProvider = timeProvider;
@@ -60,6 +60,6 @@ internal class WatchdogScope<TService>: IDisposable
         DateTimeOffset endTime = _timeProvider.GetUtcNow();
         _logger.LogDebug("Disposing WatchdogScope. Ending at {EndTime}", endTime);
         Heartbeat report = new() { StartTime = _startTime.Value, EndTime = endTime, Exception = _exception, };
-        _watchdogService.RegisterHeartbeat<TService>(report);
+        _watchdogService.RegisterHeartbeat(report);
     }
 }

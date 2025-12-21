@@ -10,19 +10,18 @@ namespace Lazarus.Extensions.HealthChecks.Tests.Unit;
 public class LazarusServiceHealthCheckTests
 {
     private readonly FakeTimeProvider _timeProvider;
-    private readonly IWatchdogService _watchdogService;
     private readonly TimeSpan _timeout = TimeSpan.FromSeconds(30);
 
     public LazarusServiceHealthCheckTests()
     {
         _timeProvider = new();
-        _watchdogService = new InMemoryWatchdogService(_timeProvider);
     }
 
     [Test]
     public async Task NoHeartbeatReturnsUnhealthy()
     {
-        LazarusServiceHealthCheck<TestService> healthCheck = new(_watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider);
+        LazarusServiceHealthCheck<TestService> healthCheck = new(watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
 
         HealthCheckResult result = await healthCheck.CheckHealthAsync(new());
 
@@ -36,15 +35,16 @@ public class LazarusServiceHealthCheckTests
     [Test]
     public async Task HeartbeatWithinTimeoutReturnsHealthy()
     {
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider);
         DateTimeOffset now = _timeProvider.GetUtcNow();
-        _watchdogService.RegisterHeartbeat<TestService>(new()
+        watchdogService.RegisterHeartbeat(new()
         {
             StartTime = now,
             EndTime = now
         });
         _timeProvider.Advance(TimeSpan.FromSeconds(10));
 
-        LazarusServiceHealthCheck<TestService> healthCheck = new(_watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
+        LazarusServiceHealthCheck<TestService> healthCheck = new(watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
 
         HealthCheckResult result = await healthCheck.CheckHealthAsync(new());
 
@@ -60,15 +60,16 @@ public class LazarusServiceHealthCheckTests
     [Test]
     public async Task HeartbeatExceedsTimeoutReturnsUnhealthy()
     {
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider);
         DateTimeOffset now = _timeProvider.GetUtcNow();
-        _watchdogService.RegisterHeartbeat<TestService>(new()
+        watchdogService.RegisterHeartbeat(new()
         {
             StartTime = now,
             EndTime = now
         });
         _timeProvider.Advance(TimeSpan.FromSeconds(35)); // Beyond timeout
 
-        LazarusServiceHealthCheck<TestService> healthCheck = new(_watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
+        LazarusServiceHealthCheck<TestService> healthCheck = new(watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
 
         HealthCheckResult result = await healthCheck.CheckHealthAsync(new());
 
@@ -83,22 +84,23 @@ public class LazarusServiceHealthCheckTests
     [Test]
     public async Task MultipleHeartbeatsUsesLatest()
     {
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider);
         DateTimeOffset firstTime = _timeProvider.GetUtcNow();
-        _watchdogService.RegisterHeartbeat<TestService>(new()
+        watchdogService.RegisterHeartbeat(new()
         {
             StartTime = firstTime,
             EndTime = firstTime
         });
         _timeProvider.Advance(TimeSpan.FromSeconds(10));
         DateTimeOffset secondTime = _timeProvider.GetUtcNow();
-        _watchdogService.RegisterHeartbeat<TestService>(new()
+        watchdogService.RegisterHeartbeat(new()
         {
             StartTime = secondTime,
             EndTime = secondTime
         }); // Second heartbeat
         _timeProvider.Advance(TimeSpan.FromSeconds(5));
 
-        LazarusServiceHealthCheck<TestService> healthCheck = new(_watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
+        LazarusServiceHealthCheck<TestService> healthCheck = new(watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
 
         HealthCheckResult result = await healthCheck.CheckHealthAsync(new());
         using (Assert.Multiple())
@@ -113,23 +115,26 @@ public class LazarusServiceHealthCheckTests
     [Test]
     public async Task DifferentServiceTypesTrackedSeparately()
     {
+        InMemoryWatchdogService<Service1> watchdogService1 = new(_timeProvider);
+        InMemoryWatchdogService<Service2> watchdogService2 = new(_timeProvider);
+
         DateTimeOffset time1 = _timeProvider.GetUtcNow();
-        _watchdogService.RegisterHeartbeat<Service1>(new()
+        watchdogService1.RegisterHeartbeat(new()
         {
             StartTime = time1,
             EndTime = time1
         });
         _timeProvider.Advance(TimeSpan.FromSeconds(5));
         DateTimeOffset time2 = _timeProvider.GetUtcNow();
-        _watchdogService.RegisterHeartbeat<Service2>(new()
+        watchdogService2.RegisterHeartbeat(new()
         {
             StartTime = time2,
             EndTime = time2
         });
         _timeProvider.Advance(TimeSpan.FromSeconds(10));
 
-        LazarusServiceHealthCheck<Service1> healthCheck1 = new(_watchdogService, _timeProvider, CreateOptionsMonitor<Service1>(_timeout));
-        LazarusServiceHealthCheck<Service2> healthCheck2 = new(_watchdogService, _timeProvider, CreateOptionsMonitor<Service2>(_timeout));
+        LazarusServiceHealthCheck<Service1> healthCheck1 = new(watchdogService1, _timeProvider, CreateOptionsMonitor<Service1>(_timeout));
+        LazarusServiceHealthCheck<Service2> healthCheck2 = new(watchdogService2, _timeProvider, CreateOptionsMonitor<Service2>(_timeout));
 
         HealthCheckResult result1 = await healthCheck1.CheckHealthAsync(new());
         HealthCheckResult result2 = await healthCheck2.CheckHealthAsync(new());
@@ -147,15 +152,16 @@ public class LazarusServiceHealthCheckTests
     [Test]
     public async Task MetadataContainsExpectedFields()
     {
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider);
         DateTimeOffset now = _timeProvider.GetUtcNow();
-        _watchdogService.RegisterHeartbeat<TestService>(new()
+        watchdogService.RegisterHeartbeat(new()
         {
             StartTime = now,
             EndTime = now
         });
         _timeProvider.Advance(TimeSpan.FromSeconds(10));
 
-        LazarusServiceHealthCheck<TestService> healthCheck = new(_watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
+        LazarusServiceHealthCheck<TestService> healthCheck = new(watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
 
         HealthCheckResult result = await healthCheck.CheckHealthAsync(new());
 
@@ -176,15 +182,16 @@ public class LazarusServiceHealthCheckTests
     [Test]
     public async Task HealthyResultIncludesTimingInMessage()
     {
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider);
         DateTimeOffset now = _timeProvider.GetUtcNow();
-        _watchdogService.RegisterHeartbeat<TestService>(new()
+        watchdogService.RegisterHeartbeat(new()
         {
             StartTime = now,
             EndTime = now
         });
         _timeProvider.Advance(TimeSpan.FromSeconds(15));
 
-        LazarusServiceHealthCheck<TestService> healthCheck = new(_watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
+        LazarusServiceHealthCheck<TestService> healthCheck = new(watchdogService, _timeProvider, CreateOptionsMonitor<TestService>(_timeout));
 
         HealthCheckResult result = await healthCheck.CheckHealthAsync(new());
 
@@ -196,8 +203,9 @@ public class LazarusServiceHealthCheckTests
     [Test]
     public async Task HeartbeatProgressesThroughHealthStates()
     {
+        InMemoryWatchdogService<TestService> watchdogService = new(_timeProvider);
         DateTimeOffset initialTime = _timeProvider.GetUtcNow();
-        _watchdogService.RegisterHeartbeat<TestService>(new()
+        watchdogService.RegisterHeartbeat(new()
         {
             StartTime = initialTime,
             EndTime = initialTime
@@ -206,7 +214,7 @@ public class LazarusServiceHealthCheckTests
         // Healthy state (10 seconds, within degraded threshold of 15s)
         _timeProvider.Advance(TimeSpan.FromSeconds(10));
         LazarusServiceHealthCheck<TestService> healthCheckHealthy = new(
-            _watchdogService,
+            watchdogService,
             _timeProvider,
             CreateOptionsMonitor<TestService>(_timeout));
         HealthCheckResult healthyResult = await healthCheckHealthy.CheckHealthAsync(new HealthCheckContext());
@@ -220,7 +228,7 @@ public class LazarusServiceHealthCheckTests
         // Degraded state (20 seconds total, past degraded 15s threshold)
         _timeProvider.Advance(TimeSpan.FromSeconds(10));
         LazarusServiceHealthCheck<TestService> healthCheckDegraded = new(
-            _watchdogService,
+            watchdogService,
             _timeProvider,
             CreateOptionsMonitor<TestService>(_timeout));
         HealthCheckResult degradedResult = await healthCheckDegraded.CheckHealthAsync(new HealthCheckContext());
@@ -235,7 +243,7 @@ public class LazarusServiceHealthCheckTests
         // Unhealthy state (35 seconds total, past unhealthy 30s threshold)
         _timeProvider.Advance(TimeSpan.FromSeconds(15));
         LazarusServiceHealthCheck<TestService> healthCheckUnhealthy = new(
-            _watchdogService,
+            watchdogService,
             _timeProvider,
             CreateOptionsMonitor<TestService>(_timeout));
         HealthCheckResult unhealthyResult = await healthCheckUnhealthy.CheckHealthAsync(new HealthCheckContext());

@@ -8,17 +8,17 @@ internal class WatchdogScopeFactory
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly TimeProvider _timeProvider;
-    private readonly IWatchdogService _watchdogService;
 
-    public WatchdogScopeFactory(IServiceProvider serviceProvider, TimeProvider timeProvider, IWatchdogService watchdogService)
+    public WatchdogScopeFactory(IServiceProvider serviceProvider, TimeProvider timeProvider)
     {
         _serviceProvider = serviceProvider;
         _timeProvider = timeProvider;
-        _watchdogService = watchdogService;
     }
 
     public WatchdogScope<TService> CreateScope<TService>()
     {
-        return new(_serviceProvider.GetRequiredService<ILogger<WatchdogScope<TService>>>(), _timeProvider, _watchdogService);
+        return new(_serviceProvider.GetRequiredService<ILogger<WatchdogScope<TService>>>(),
+            _timeProvider,
+            _serviceProvider.GetRequiredService<IWatchdogService<TService>>());
     }
 }
