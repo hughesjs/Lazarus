@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Lazarus.Public.Watchdog;
 
 namespace Lazarus.Internal.Watchdog;
@@ -6,8 +7,8 @@ internal class InMemoryWatchdogService<TService>: IWatchdogService<TService>
 {
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _windowPeriod;
-
-    private List<Heartbeat> _recentHeartbeats;
+    private readonly List<Heartbeat> _recentHeartbeats;
+    private readonly Lock _lock = new();
 
     public InMemoryWatchdogService(TimeProvider timeProvider, TimeSpan windowPeriod)
     {
@@ -18,19 +19,20 @@ internal class InMemoryWatchdogService<TService>: IWatchdogService<TService>
 
     public void RegisterHeartbeat(Heartbeat report)
     {
-        lock (_recentHeartbeats)
+        lock (_lock)
         {
             _recentHeartbeats.Add(report);
 
-            // Prune old heartbeats to prevent unbounded memory growth
             DateTimeOffset cutOff = _timeProvider.GetUtcNow() - _windowPeriod;
-            _recentHeartbeats = _recentHeartbeats.Where(hb => hb.EndTime > cutOff).ToList();
+            _recentHeartbeats.RemoveAll(hb => hb.EndTime <= cutOff);
+
         }
+
     }
 
     public Heartbeat? GetLastHeartbeat()
     {
-        lock (_recentHeartbeats)
+        lock (_lock)
         {
             return _recentHeartbeats.LastOrDefault();
         }
@@ -38,13 +40,15 @@ internal class InMemoryWatchdogService<TService>: IWatchdogService<TService>
 
     public IReadOnlyList<Exception> GetExceptionsInWindow()
     {
-        lock (_recentHeartbeats)
+        lock (_lock)
         {
             DateTimeOffset cutOff = _timeProvider.GetUtcNow() - _windowPeriod;
-            List<Heartbeat> heartbeatsInWindow = _recentHeartbeats.Where(hb => hb.EndTime > cutOff).ToList();
-            _recentHeartbeats = heartbeatsInWindow;
+            return _recentHeartbeats
+                .Where(hb => hb.EndTime > cutOff)
+                .Where(hb => hb.Exception is not null)
+                .Select(hb => hb.Exception!)
+                .ToImmutableList();
 
-            return heartbeatsInWindow.Where(hb => hb.Exception is not null).Select(hb => hb.Exception!).ToList().AsReadOnly();
         }
     }
 }
