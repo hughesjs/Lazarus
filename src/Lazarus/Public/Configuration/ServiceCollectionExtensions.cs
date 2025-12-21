@@ -41,7 +41,7 @@ public static class ServiceCollectionExtensions
     /// <code>
     /// services.AddLazarusService&lt;MyBackgroundService&gt;(
     ///     sp => TimeSpan.FromSeconds(5),
-    ///     exceptionWindow: TimeSpan.FromMinutes(5));
+    ///     sp => TimeSpan.FromMinutes(5));
     /// </code>
     /// </example>
     public static IServiceCollection AddLazarusService<TService>(this IServiceCollection services, Func<IServiceProvider, TimeSpan> loopDelay, Func<IServiceProvider, TimeSpan> exceptionWindow) where TService : class, IResilientService

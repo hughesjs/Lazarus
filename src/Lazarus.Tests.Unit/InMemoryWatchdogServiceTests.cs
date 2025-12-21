@@ -79,7 +79,7 @@ public class InMemoryWatchdogServiceTests
         watchdog.RegisterHeartbeat(new() { StartTime = now, EndTime = now, Exception = null });
         watchdog.RegisterHeartbeat(new() { StartTime = now, EndTime = now, Exception = null });
 
-        List<Exception> exceptions = watchdog.GetExceptionsInWindow();
+        IReadOnlyList<Exception> exceptions = watchdog.GetExceptionsInWindow();
 
         await Assert.That(exceptions).IsEmpty();
     }
@@ -106,7 +106,7 @@ public class InMemoryWatchdogServiceTests
         // Heartbeats are at: 0min, 2min, 4min, 6min, 8min
         // Window is 5 minutes, cutoff is 10min - 5min = 5min
         // Heartbeats with EndTime > 5min: 6min and 8min (Error 3 and Error 4)
-        List<Exception> exceptions = watchdog.GetExceptionsInWindow();
+        IReadOnlyList<Exception> exceptions = watchdog.GetExceptionsInWindow();
 
         using (Assert.Multiple())
         {
@@ -139,12 +139,17 @@ public class InMemoryWatchdogServiceTests
         watchdog.GetExceptionsInWindow();
 
         // GetLastHeartbeat() should still work and return the last heartbeat within the window
+        // Heartbeats at 0, 2, 4 min are pruned (older than window start at 5min)
+        // Heartbeats at 6, 8 min remain
         Heartbeat? lastHeartbeat = watchdog.GetLastHeartbeat();
 
         using (Assert.Multiple())
         {
             await Assert.That(lastHeartbeat).IsNotNull();
-            await Assert.That(lastHeartbeat!.EndTime).IsGreaterThanOrEqualTo(startTime);
+            // Last heartbeat should be at 8 minutes (the most recent one within the window)
+            await Assert.That(lastHeartbeat!.EndTime).IsEqualTo(startTime + TimeSpan.FromMinutes(8));
+            // Verify it's within the 5-minute window (> 5min from start)
+            await Assert.That(lastHeartbeat.EndTime).IsGreaterThan(startTime + TimeSpan.FromMinutes(5));
         }
     }
 

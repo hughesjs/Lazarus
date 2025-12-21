@@ -24,7 +24,7 @@ public static class HealthCheckExtensions
         string? customName = null,
         IEnumerable<string>? tags = null)
     {
-        string name = customName ?? $"{typeof(TService).Name} ({GetRandomHash()}) ";
+        string name = customName ?? $"{typeof(TService).Name} ({GetRandomHash()})";
 
         builder.Services.Configure<LazarusHealthCheckConfiguration<TService>>(configuration);
 

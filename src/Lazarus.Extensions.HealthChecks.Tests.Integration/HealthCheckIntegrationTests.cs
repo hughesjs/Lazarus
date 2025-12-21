@@ -86,22 +86,103 @@ public class HealthCheckIntegrationTests : IAsyncDisposable
         using JsonDocument doc = JsonDocument.Parse(content);
         JsonElement entries = doc.RootElement.GetProperty("entries");
 
-        // Technically order isn't gauranteed here but in practice I've never seen it fail.
-        // If this test is flakey, start here
+        // Get all TestService entries - use service type name from metadata to identify them
         List<JsonProperty> testServiceEntries = entries.EnumerateObject()
-            .Where(e => e.Name.Contains("TestService"))
+            .Where(e => e.Value.TryGetProperty("data", out JsonElement data) &&
+                       data.TryGetProperty("service", out JsonElement service) &&
+                       service.GetString() != null &&
+                       service.GetString()!.Contains("TestService"))
             .ToList();
 
-        JsonElement serviceOneCheckData = testServiceEntries[0].Value.GetProperty("data");
-        JsonElement serviceTwoCheckData = testServiceEntries[1].Value.GetProperty("data");
-
-        bool firstServiceHasHeartbeat = serviceOneCheckData.TryGetProperty("lastHeartbeat", out JsonElement _);
-        bool secondServiceHasHeartbeat = serviceTwoCheckData.TryGetProperty("lastHeartbeat", out JsonElement _);
+        await Assert.That(testServiceEntries).Count().IsEqualTo(2);
 
         using (Assert.Multiple())
         {
-            await Assert.That(firstServiceHasHeartbeat).IsTrue();
-            await Assert.That(secondServiceHasHeartbeat).IsTrue();
+            foreach (JsonProperty entry in testServiceEntries)
+            {
+                JsonElement data = entry.Value.GetProperty("data");
+                bool hasHeartbeat = data.TryGetProperty("lastHeartbeat", out JsonElement _);
+                await Assert.That(hasHeartbeat).IsTrue();
+            }
+        }
+    }
+
+    [Test]
+    public async Task DifferentConfigurationsResultInDifferentHealthStatus()
+    {
+        // ServiceOne (string) has IntervalOne = 5s, unhealthy timeout = 10s, degraded timeout = 7.5s
+        // ServiceTwo (object) has IntervalTwo = 7s, unhealthy timeout = 14s, degraded timeout = 10.5s
+
+        // Clear existing heartbeats and set specific ones to test configuration differences
+#pragma warning disable CA2201
+        IWatchdogService<TestService<string>> watchdogString = _factory.Services.GetRequiredService<IWatchdogService<TestService<string>>>();
+        IWatchdogService<TestService<object>> watchdogObject = _factory.Services.GetRequiredService<IWatchdogService<TestService<object>>>();
+
+        FieldInfo recentHeartbeatsFieldString = watchdogString.GetType().GetField("_recentHeartbeats", BindingFlags.NonPublic | BindingFlags.Instance) ?? throw new("Did you change the internal field of the watchdog?");
+        FieldInfo recentHeartbeatsFieldObject = watchdogObject.GetType().GetField("_recentHeartbeats", BindingFlags.NonPublic | BindingFlags.Instance) ?? throw new("Did you change the internal field of the watchdog?");
+
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+        DateTimeOffset elevenSecondsAgo = now - TimeSpan.FromSeconds(11);
+
+        // Set both services to have a heartbeat from 11 seconds ago
+        List<Heartbeat> stringHeartbeats = new()
+        {
+            new() { StartTime = elevenSecondsAgo, EndTime = elevenSecondsAgo, Exception = null }
+        };
+        List<Heartbeat> objectHeartbeats = new()
+        {
+            new() { StartTime = elevenSecondsAgo, EndTime = elevenSecondsAgo, Exception = null }
+        };
+
+        recentHeartbeatsFieldString.SetValue(watchdogString, stringHeartbeats);
+        recentHeartbeatsFieldObject.SetValue(watchdogObject, objectHeartbeats);
+#pragma warning restore CA2201
+
+        HttpResponseMessage res = await _client.GetAsync("/health", _ctx);
+        string content = await res.Content.ReadAsStringAsync(_ctx);
+
+        using JsonDocument doc = JsonDocument.Parse(content);
+        JsonElement entries = doc.RootElement.GetProperty("entries");
+
+        // Use configuration metadata to identify which service is which
+        // ServiceString has unhealthy timeout of 10s
+        // ServiceObject has unhealthy timeout of 14s
+        JsonProperty? stringServiceEntry = null;
+        JsonProperty? objectServiceEntry = null;
+
+        foreach (JsonProperty entry in entries.EnumerateObject())
+        {
+            if (entry.Value.TryGetProperty("data", out JsonElement data) &&
+                data.TryGetProperty("configuration", out JsonElement config) &&
+                config.TryGetProperty("unhealthyTimeSinceLastHeartbeat", out JsonElement unhealthyTimeout))
+            {
+                string? timeoutStr = unhealthyTimeout.GetString();
+                if (timeoutStr != null)
+                {
+                    if (timeoutStr.Contains("00:00:10"))
+                    {
+                        stringServiceEntry = entry;
+                    }
+                    else if (timeoutStr.Contains("00:00:14"))
+                    {
+                        objectServiceEntry = entry;
+                    }
+                }
+            }
+        }
+
+        await Assert.That(stringServiceEntry.HasValue).IsTrue();
+        await Assert.That(objectServiceEntry.HasValue).IsTrue();
+
+        JsonElement serviceStringStatus = stringServiceEntry!.Value.Value.GetProperty("status");
+        JsonElement serviceObjectStatus = objectServiceEntry!.Value.Value.GetProperty("status");
+
+        using (Assert.Multiple())
+        {
+            // ServiceString: 11s since last heartbeat, unhealthy threshold is 10s -> Unhealthy
+            await Assert.That(serviceStringStatus.GetString()).IsEqualTo("Unhealthy");
+            // ServiceObject: 11s since last heartbeat, degraded threshold is 10.5s, unhealthy is 14s -> Degraded
+            await Assert.That(serviceObjectStatus.GetString()).IsEqualTo("Degraded");
         }
     }
 

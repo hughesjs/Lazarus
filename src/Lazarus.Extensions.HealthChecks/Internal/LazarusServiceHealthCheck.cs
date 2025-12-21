@@ -23,7 +23,7 @@ internal class LazarusServiceHealthCheck<TService> : IHealthCheck
     public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = new())
     {
         Heartbeat? lastHeartbeat = _watchdogService.GetLastHeartbeat();
-        List<Exception> exceptions = _watchdogService.GetExceptionsInWindow();
+        IReadOnlyList<Exception> exceptions = _watchdogService.GetExceptionsInWindow();
         StringBuilder statusBuilder = new();
         HealthStatus heartbeatStatus = CheckHeartbeatStatus(statusBuilder, lastHeartbeat);
         HealthStatus exceptionsStatus = CheckExceptionsStatus(statusBuilder, exceptions);
@@ -52,7 +52,7 @@ internal class LazarusServiceHealthCheck<TService> : IHealthCheck
         return Task.FromResult(new HealthCheckResult(overallStatus, status, lastHeartbeat?.Exception, metaDict));
     }
 
-    private HealthStatus CheckExceptionsStatus(StringBuilder statusBuilder, List<Exception> exceptions)
+    private HealthStatus CheckExceptionsStatus(StringBuilder statusBuilder, IReadOnlyList<Exception> exceptions)
     {
         int exceptionCount = exceptions.Count;
 

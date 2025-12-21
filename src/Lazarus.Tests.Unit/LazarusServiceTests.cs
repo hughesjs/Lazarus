@@ -126,9 +126,12 @@ public class LazarusServiceTests : IAsyncDisposable
         await AdvanceTime();
         Heartbeat? secondHeartbeat = _watchdog.GetLastHeartbeat();
 
-
-        await Assert.That(firstHeartbeat).IsNotNull();
-        await Assert.That(secondHeartbeat!.StartTime).IsNotEqualTo(firstHeartbeat!.StartTime);
+        using (Assert.Multiple())
+        {
+            await Assert.That(firstHeartbeat).IsNotNull();
+            await Assert.That(secondHeartbeat).IsNotNull();
+            await Assert.That(secondHeartbeat!.StartTime).IsNotEqualTo(firstHeartbeat!.StartTime);
+        }
     }
 
     private class TestService : IResilientService

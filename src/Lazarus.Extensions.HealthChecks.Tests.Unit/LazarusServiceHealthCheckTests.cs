@@ -409,6 +409,115 @@ public class LazarusServiceHealthCheckTests
         }
     }
 
+    [Test]
+    public async Task DifferentServicesWithDifferentExceptionThresholdsReportDifferentStatus()
+    {
+        InMemoryWatchdogService<Service1> watchdog1 = new(_timeProvider, TimeSpan.FromMinutes(5));
+        InMemoryWatchdogService<Service2> watchdog2 = new(_timeProvider, TimeSpan.FromMinutes(5));
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+
+        // Both services get 3 exceptions
+        for (int i = 0; i < 3; i++)
+        {
+            watchdog1.RegisterHeartbeat(new()
+            {
+                StartTime = now,
+                EndTime = now,
+                Exception = new InvalidOperationException($"Error {i}")
+            });
+            watchdog2.RegisterHeartbeat(new()
+            {
+                StartTime = now,
+                EndTime = now,
+                Exception = new InvalidOperationException($"Error {i}")
+            });
+            _timeProvider.Advance(TimeSpan.FromSeconds(10));
+        }
+
+        // Service1 has degraded threshold of 2, unhealthy threshold of 5
+        LazarusHealthCheckConfiguration<Service1> config1 = new()
+        {
+            UnhealthyTimeSinceLastHeartbeat = TimeSpan.FromMinutes(10),
+            DegradedTimeSinceLastHeartbeat = TimeSpan.FromMinutes(5),
+            UnhealthyExceptionCountThreshold = 5,
+            DegradedExceptionCountThreshold = 2,
+            ExceptionCounterSlidingWindow = TimeSpan.FromMinutes(5)
+        };
+
+        // Service2 has degraded threshold of 5, unhealthy threshold of 10
+        LazarusHealthCheckConfiguration<Service2> config2 = new()
+        {
+            UnhealthyTimeSinceLastHeartbeat = TimeSpan.FromMinutes(10),
+            DegradedTimeSinceLastHeartbeat = TimeSpan.FromMinutes(5),
+            UnhealthyExceptionCountThreshold = 10,
+            DegradedExceptionCountThreshold = 5,
+            ExceptionCounterSlidingWindow = TimeSpan.FromMinutes(5)
+        };
+
+        LazarusServiceHealthCheck<Service1> healthCheck1 = new(watchdog1, _timeProvider, new FakeOptionsMonitor<LazarusHealthCheckConfiguration<Service1>>(config1));
+        LazarusServiceHealthCheck<Service2> healthCheck2 = new(watchdog2, _timeProvider, new FakeOptionsMonitor<LazarusHealthCheckConfiguration<Service2>>(config2));
+
+        HealthCheckResult result1 = await healthCheck1.CheckHealthAsync(new());
+        HealthCheckResult result2 = await healthCheck2.CheckHealthAsync(new());
+
+        using (Assert.Multiple())
+        {
+            await Assert.That(result1.Status).IsEqualTo(HealthStatus.Degraded);
+            await Assert.That(result1.Description).Contains("3");
+            await Assert.That(result2.Status).IsEqualTo(HealthStatus.Healthy);
+            await Assert.That(result2.Description).Contains("3");
+        }
+    }
+
+    [Test]
+    public async Task DifferentServicesWithDifferentHeartbeatTimeoutsReportDifferentStatus()
+    {
+        InMemoryWatchdogService<Service1> watchdog1 = new(_timeProvider, TimeSpan.FromMinutes(5));
+        InMemoryWatchdogService<Service2> watchdog2 = new(_timeProvider, TimeSpan.FromMinutes(5));
+        DateTimeOffset now = _timeProvider.GetUtcNow();
+
+        // Both services get a heartbeat at the same time
+        watchdog1.RegisterHeartbeat(new() { StartTime = now, EndTime = now, Exception = null });
+        watchdog2.RegisterHeartbeat(new() { StartTime = now, EndTime = now, Exception = null });
+
+        // Advance time by 45 seconds
+        _timeProvider.Advance(TimeSpan.FromSeconds(45));
+
+        // Service1 has unhealthy timeout of 30s, degraded timeout of 15s
+        LazarusHealthCheckConfiguration<Service1> config1 = new()
+        {
+            UnhealthyTimeSinceLastHeartbeat = TimeSpan.FromSeconds(30),
+            DegradedTimeSinceLastHeartbeat = TimeSpan.FromSeconds(15),
+            UnhealthyExceptionCountThreshold = 5,
+            DegradedExceptionCountThreshold = 2,
+            ExceptionCounterSlidingWindow = TimeSpan.FromMinutes(5)
+        };
+
+        // Service2 has unhealthy timeout of 60s, degraded timeout of 30s
+        LazarusHealthCheckConfiguration<Service2> config2 = new()
+        {
+            UnhealthyTimeSinceLastHeartbeat = TimeSpan.FromSeconds(60),
+            DegradedTimeSinceLastHeartbeat = TimeSpan.FromSeconds(30),
+            UnhealthyExceptionCountThreshold = 5,
+            DegradedExceptionCountThreshold = 2,
+            ExceptionCounterSlidingWindow = TimeSpan.FromMinutes(5)
+        };
+
+        LazarusServiceHealthCheck<Service1> healthCheck1 = new(watchdog1, _timeProvider, new FakeOptionsMonitor<LazarusHealthCheckConfiguration<Service1>>(config1));
+        LazarusServiceHealthCheck<Service2> healthCheck2 = new(watchdog2, _timeProvider, new FakeOptionsMonitor<LazarusHealthCheckConfiguration<Service2>>(config2));
+
+        HealthCheckResult result1 = await healthCheck1.CheckHealthAsync(new());
+        HealthCheckResult result2 = await healthCheck2.CheckHealthAsync(new());
+
+        using (Assert.Multiple())
+        {
+            // Service1: 45s since heartbeat, unhealthy threshold is 30s -> Unhealthy
+            await Assert.That(result1.Status).IsEqualTo(HealthStatus.Unhealthy);
+            // Service2: 45s since heartbeat, degraded threshold is 30s, unhealthy is 60s -> Degraded
+            await Assert.That(result2.Status).IsEqualTo(HealthStatus.Degraded);
+        }
+    }
+
     private class FakeOptionsMonitor<TOptions> : Microsoft.Extensions.Options.IOptionsMonitor<TOptions>
     {
         private readonly TOptions _currentValue;

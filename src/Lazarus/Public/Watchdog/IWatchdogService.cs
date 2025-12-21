@@ -24,18 +24,18 @@ public interface IWatchdogService<TService>
     public void RegisterHeartbeat(Heartbeat report);
 
     /// <summary>
-    /// Gets the timestamp of the last heartbeat registered by the specified service type.
+    /// Gets the last heartbeat registered by the specified service type.
     /// </summary>
     /// <returns>
-    /// The <see cref="DateTimeOffset"/> of the last heartbeat, or <c>null</c> if no heartbeat
+    /// The <see cref="Heartbeat"/> of the last heartbeat, or <c>null</c> if no heartbeat
     /// has ever been registered for this service type.
     /// </returns>
     public Heartbeat? GetLastHeartbeat();
 
     /// <summary>
-    /// Gets the list of exceptions that have occured within the configured sliding window.
+    /// Gets the list of exceptions that have occurred within the configured sliding window.
     /// </summary>
-    /// <returns>The <see cref="List&lt;Exception&gt;"/> containing all of the exceptions thrown within the window.</returns>
-    public List<Exception> GetExceptionsInWindow();
+    /// <returns>The <see cref="IReadOnlyList{T}"/> of <see cref="Exception"/> containing all of the exceptions thrown within the window.</returns>
+    public IReadOnlyList<Exception> GetExceptionsInWindow();
 
 }
