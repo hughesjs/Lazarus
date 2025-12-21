@@ -1,6 +1,5 @@
 using HealthChecks.UI.Client;
 using Lazarus.Extensions.HealthChecks.Public;
-using Lazarus.Extensions.HealthChecks.Tests.Integration.App;
 using Lazarus.Public.Configuration;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;

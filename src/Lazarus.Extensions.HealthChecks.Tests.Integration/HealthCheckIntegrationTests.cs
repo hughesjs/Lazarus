@@ -1,6 +1,5 @@
 using System.Reflection;
 using System.Text.Json;
-using Lazarus.Extensions.HealthChecks.Tests.Integration.App;
 using Lazarus.Extensions.HealthChecks.Tests.Integration.Fixture;
 using Lazarus.Public.Watchdog;
 using Microsoft.AspNetCore.Mvc.Testing;
