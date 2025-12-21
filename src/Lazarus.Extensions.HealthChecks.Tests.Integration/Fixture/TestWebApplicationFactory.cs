@@ -41,8 +41,8 @@ public class LazarusTestWebApplicationFactory : WebApplicationFactory<LazarusTes
                             .AddInMemoryCollection(configDict)
                             .Build();
 
-                        services.AddLazarusService<TestService<string>>(_ => IntervalOne, exceptionWindow: TimeSpan.FromMinutes(5));
-                        services.AddLazarusService<TestService<object>>(_ => IntervalTwo, exceptionWindow: TimeSpan.FromMinutes(5));
+                        services.AddLazarusService<TestService<string>>(_ => IntervalOne, exceptionWindow: _ => TimeSpan.FromMinutes(5));
+                        services.AddLazarusService<TestService<object>>(_ => IntervalTwo, exceptionWindow: _ => TimeSpan.FromMinutes(5));
                         services.AddHealthChecks()
                             .AddLazarusHealthCheck<TestService<string>>(
                                 configuration.GetSection("HealthChecks:TestServiceString"))

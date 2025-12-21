@@ -44,7 +44,7 @@ public static class ServiceCollectionExtensions
     ///     exceptionWindow: TimeSpan.FromMinutes(5));
     /// </code>
     /// </example>
-    public static IServiceCollection AddLazarusService<TService>(this IServiceCollection services, Func<IServiceProvider, TimeSpan> loopDelay, TimeSpan exceptionWindow) where TService : class, IResilientService
+    public static IServiceCollection AddLazarusService<TService>(this IServiceCollection services, Func<IServiceProvider, TimeSpan> loopDelay, Func<IServiceProvider, TimeSpan> exceptionWindow) where TService : class, IResilientService
     {
         services.TryAddSingleton(TimeProvider.System);
 
@@ -60,7 +60,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IWatchdogService<TService>>(sp =>
             new InMemoryWatchdogService<TService>(
                 sp.GetRequiredService<TimeProvider>(),
-                exceptionWindow));
+                exceptionWindow(sp)));
 
         services.AddHostedService<LazarusService<TService>>(sp =>
         {
