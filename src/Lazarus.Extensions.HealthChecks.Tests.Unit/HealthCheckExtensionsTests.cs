@@ -1,10 +1,9 @@
 using Lazarus.Extensions.HealthChecks.Public;
 using Lazarus.Internal.Watchdog;
-using Lazarus.Public;
 using Lazarus.Public.Watchdog;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Lazarus.Extensions.HealthChecks.Tests.Unit;
@@ -14,18 +13,30 @@ public class HealthCheckExtensionsTests
     [Test]
     public async Task AddLazarusHealthcheckRegistersHealthCheck()
     {
-        // Arrange
         ServiceCollection services = new();
         services.AddLogging();
         services.AddSingleton<TimeProvider>(new FakeTimeProvider());
-        services.AddSingleton<IWatchdogService, InMemoryWatchdogService>();
+        services.AddSingleton<IWatchdogService<TestService>>(sp =>
+            new InMemoryWatchdogService<TestService>(
+                sp.GetRequiredService<TimeProvider>(),
+                TimeSpan.FromMinutes(5)));
+
+        Dictionary<string, string?> configDict = new()
+        {
+            ["UnhealthyTimeSinceLastHeartbeat"] = "00:00:30",
+            ["DegradedTimeSinceLastHeartbeat"] = "00:00:22.5",
+            ["UnhealthyExceptionCountThreshold"] = "5",
+            ["DegradedExceptionCountThreshold"] = "2",
+            ["ExceptionCounterSlidingWindow"] = "00:05:00"
+        };
+
+        IConfigurationRoot configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(configDict)
+            .Build();
 
         IHealthChecksBuilder builder = services.AddHealthChecks();
+        builder.AddLazarusHealthCheck<TestService>(configuration.GetSection(""));
 
-        // Act
-        builder.AddLazarusHealthCheck<TestService>(TimeSpan.FromSeconds(30));
-
-        // Assert
         ServiceProvider provider = services.BuildServiceProvider();
         HealthCheckService healthCheckService = provider.GetRequiredService<HealthCheckService>();
 
@@ -40,12 +51,26 @@ public class HealthCheckExtensionsTests
         ServiceCollection services = new();
         services.AddLogging();
         services.AddSingleton<TimeProvider>(new FakeTimeProvider());
-        services.AddSingleton<IWatchdogService, InMemoryWatchdogService>();
+        services.AddSingleton<IWatchdogService<TestService>>(sp =>
+            new InMemoryWatchdogService<TestService>(
+                sp.GetRequiredService<TimeProvider>(),
+                TimeSpan.FromMinutes(5)));
+
+        Dictionary<string, string?> configDict = new()
+        {
+            ["UnhealthyTimeSinceLastHeartbeat"] = "00:00:30",
+            ["DegradedTimeSinceLastHeartbeat"] = "00:00:22.5",
+            ["UnhealthyExceptionCountThreshold"] = "5",
+            ["DegradedExceptionCountThreshold"] = "2",
+            ["ExceptionCounterSlidingWindow"] = "00:05:00"
+        };
+
+        IConfigurationRoot configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(configDict)
+            .Build();
 
         IHealthChecksBuilder builder = services.AddHealthChecks();
-
-        builder.AddLazarusHealthCheck<TestService>(TimeSpan.FromSeconds(30));
-
+        builder.AddLazarusHealthCheck<TestService>(configuration.GetSection(""));
 
         ServiceProvider provider = services.BuildServiceProvider();
         HealthCheckService healthCheckService = provider.GetRequiredService<HealthCheckService>();
@@ -61,12 +86,27 @@ public class HealthCheckExtensionsTests
         ServiceCollection services = new();
         services.AddLogging();
         services.AddSingleton<TimeProvider>(new FakeTimeProvider());
-        services.AddSingleton<IWatchdogService, InMemoryWatchdogService>();
+        services.AddSingleton<IWatchdogService<TestService>>(sp =>
+            new InMemoryWatchdogService<TestService>(
+                sp.GetRequiredService<TimeProvider>(),
+                TimeSpan.FromMinutes(5)));
+
+        Dictionary<string, string?> configDict = new()
+        {
+            ["UnhealthyTimeSinceLastHeartbeat"] = "00:00:30",
+            ["DegradedTimeSinceLastHeartbeat"] = "00:00:22.5",
+            ["UnhealthyExceptionCountThreshold"] = "5",
+            ["DegradedExceptionCountThreshold"] = "2",
+            ["ExceptionCounterSlidingWindow"] = "00:05:00"
+        };
+
+        IConfigurationRoot configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(configDict)
+            .Build();
 
         IHealthChecksBuilder builder = services.AddHealthChecks();
-
         builder.AddLazarusHealthCheck<TestService>(
-            TimeSpan.FromSeconds(30),
+            configuration.GetSection(""),
             customName: "My Custom Health Check"
         );
 

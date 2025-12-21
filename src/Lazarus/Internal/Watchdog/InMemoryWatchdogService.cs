@@ -1,33 +1,54 @@
-using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using Lazarus.Public.Watchdog;
 
 namespace Lazarus.Internal.Watchdog;
 
-internal class InMemoryWatchdogService: IWatchdogService
+internal class InMemoryWatchdogService<TService>: IWatchdogService<TService>
 {
-    private readonly ConcurrentDictionary<Type, DateTimeOffset> _lastHeartbeats;
     private readonly TimeProvider _timeProvider;
+    private readonly TimeSpan _windowPeriod;
+    private readonly List<Heartbeat> _recentHeartbeats;
+    private readonly Lock _lock = new();
 
-    public InMemoryWatchdogService(TimeProvider timeProvider)
+    public InMemoryWatchdogService(TimeProvider timeProvider, TimeSpan windowPeriod)
     {
         _timeProvider = timeProvider;
-        _lastHeartbeats = new();
+        _windowPeriod = windowPeriod;
+        _recentHeartbeats = [];
     }
 
-    public void RegisterHeartbeat<TService>()
+    public void RegisterHeartbeat(Heartbeat report)
     {
-        DateTimeOffset currentTime = _timeProvider.GetUtcNow();
+        lock (_lock)
+        {
+            _recentHeartbeats.Add(report);
 
-        // This is needed to ensure that we're resilient to time-skew
-        _lastHeartbeats.AddOrUpdate(
-            typeof(TService),
-            currentTime,
-            (_, existing) => currentTime > existing ? currentTime : existing
-        );
+            DateTimeOffset cutOff = _timeProvider.GetUtcNow() - _windowPeriod;
+            _recentHeartbeats.RemoveAll(hb => hb.EndTime <= cutOff);
+
+        }
+
     }
 
-    public DateTimeOffset? GetLastHeartbeat<TService>() =>
-        _lastHeartbeats.TryGetValue(typeof(TService), out DateTimeOffset lastHeartbeat)
-            ? lastHeartbeat
-            : null;
+    public Heartbeat? GetLastHeartbeat()
+    {
+        lock (_lock)
+        {
+            return _recentHeartbeats.LastOrDefault();
+        }
+    }
+
+    public IReadOnlyList<Exception> GetExceptionsInWindow()
+    {
+        lock (_lock)
+        {
+            DateTimeOffset cutOff = _timeProvider.GetUtcNow() - _windowPeriod;
+            return _recentHeartbeats
+                .Where(hb => hb.EndTime > cutOff)
+                .Where(hb => hb.Exception is not null)
+                .Select(hb => hb.Exception!)
+                .ToImmutableList();
+
+        }
+    }
 }

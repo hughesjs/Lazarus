@@ -1,4 +1,5 @@
 using Lazarus.Extensions.HealthChecks.Internal;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -10,48 +11,24 @@ namespace Lazarus.Extensions.HealthChecks.Public;
 public static class HealthCheckExtensions
 {
     /// <summary>
-    /// Adds a health check for a Lazarus service that monitors the service's heartbeat activity.
-    /// The health check will report the service as unhealthy if no heartbeat has been received
-    /// within the specified timeout period.
+    /// Adds a Lazarus service health check with configuration bound from an IConfigurationSection.
     /// </summary>
-    /// <typeparam name="TService">
-    /// The type of the Lazarus service to monitor. Must match the type used when registering
-    /// the service with <c>AddLazarusService&lt;TService&gt;</c>.
-    /// </typeparam>
-    /// <param name="builder">The <see cref="IHealthChecksBuilder"/> to add the health check to.</param>
-    /// <param name="timeout">
-    /// The maximum duration allowed since the last heartbeat before the service is considered unhealthy.
-    /// For example, a timeout of 30 seconds means the service must register a heartbeat at least once
-    /// every 30 seconds to be considered healthy.
-    /// </param>
-    /// <param name="customName">
-    /// An optional custom name for the health check. If not provided, a name will be auto-generated
-    /// using the service type name and a random identifier.
-    /// </param>
-    /// <param name="failureStatus">
-    /// The <see cref="HealthStatus"/> to report when the health check fails.
-    /// Defaults to <see cref="HealthStatus.Unhealthy"/>.
-    /// </param>
-    /// <param name="tags">
-    /// Optional tags to associate with the health check for filtering and categorization.
-    /// </param>
-    /// <returns>The <see cref="IHealthChecksBuilder"/> for chaining additional health check registrations.</returns>
-    /// <example>
-    /// <code>
-    /// services.AddHealthChecks()
-    ///     .AddLazarusHealthCheck&lt;MyBackgroundService&gt;(
-    ///         timeout: TimeSpan.FromSeconds(30),
-    ///         customName: "my-service-health",
-    ///         tags: new[] { "background-services" });
-    /// </code>
-    /// </example>
-    public static IHealthChecksBuilder AddLazarusHealthCheck<TService>(this IHealthChecksBuilder builder, TimeSpan timeout, string? customName = null, HealthStatus failureStatus = HealthStatus.Unhealthy, IEnumerable<string>? tags = null)
+    /// <typeparam name="TService">The service type to monitor for health status.</typeparam>
+    /// <param name="builder">The health checks builder to extend.</param>
+    /// <param name="configuration">The configuration section containing health check thresholds and settings.</param>
+    /// <param name="customName">Optional custom name for this health check. If null, generates a name from the service type.</param>
+    /// <param name="tags">Optional tags to categorise this health check.</param>
+    /// <returns>The health checks builder for method chaining.</returns>
+    public static IHealthChecksBuilder AddLazarusHealthCheck<TService>(this IHealthChecksBuilder builder,
+        IConfigurationSection configuration,
+        string? customName = null,
+        IEnumerable<string>? tags = null)
     {
-        string name = customName ?? $"{typeof(TService).Name} ({GetRandomHash()}) ";
+        string name = customName ?? $"{typeof(TService).Name} ({GetRandomHash()})";
 
-        builder.AddTypeActivatedCheck<LazarusServiceHealthCheck<TService>>(name, failureStatus, tags ?? [], args: timeout);
+        builder.Services.Configure<LazarusHealthCheckConfiguration<TService>>(configuration);
 
-        return builder;
+        return builder.AddCheck<LazarusServiceHealthCheck<TService>>(name, null, tags ?? []);
     }
 
     /// <summary>

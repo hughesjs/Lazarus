@@ -1,6 +1,6 @@
 using Lazarus.Public;
 
-namespace Lazarus.Extensions.HealthChecks.Tests.Integration.App;
+namespace Lazarus.Extensions.HealthChecks.Tests.Integration.Fixture;
 
 /// <summary>
 ///

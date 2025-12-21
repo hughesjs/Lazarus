@@ -29,19 +29,24 @@ public static class ServiceCollectionExtensions
     /// The delay between each iteration of the service's <see cref="IResilientService.PerformLoop"/> method.
     /// Use <see cref="TimeSpan.Zero"/> for no delay between iterations.
     /// </param>
+    /// <param name="exceptionWindow">
+    /// The sliding time window for tracking exceptions. Exceptions older than this window will be discarded
+    /// from the watchdog service's exception history. Used by health checks to determine service health based on recent exceptions.
+    /// </param>
     /// <returns>The <see cref="IServiceCollection"/> for chaining additional registrations.</returns>
     /// <exception cref="LazarusConfigurationException">
     /// Thrown when attempting to register a service of the same type that is already registered.
     /// </exception>
     /// <example>
     /// <code>
-    /// services.AddLazarusService&lt;MyBackgroundService&gt;(TimeSpan.FromSeconds(5));
+    /// services.AddLazarusService&lt;MyBackgroundService&gt;(
+    ///     sp => TimeSpan.FromSeconds(5),
+    ///     sp => TimeSpan.FromMinutes(5));
     /// </code>
     /// </example>
-    public static IServiceCollection AddLazarusService<TService>(this IServiceCollection services, TimeSpan loopDelay) where TService : class, IResilientService
+    public static IServiceCollection AddLazarusService<TService>(this IServiceCollection services, Func<IServiceProvider, TimeSpan> loopDelay, Func<IServiceProvider, TimeSpan> exceptionWindow) where TService : class, IResilientService
     {
         services.TryAddSingleton(TimeProvider.System);
-        services.TryAddSingleton<IWatchdogService, InMemoryWatchdogService>();
 
         // This restriction may prove unnecessary later
         if (services.Any(s => s.ServiceType == typeof(TService)))
@@ -50,13 +55,20 @@ public static class ServiceCollectionExtensions
         }
 
         services.AddSingleton<TService>();
+
+        services.TryAddTransient<WatchdogScopeFactory>();
+        services.TryAddSingleton<IWatchdogService<TService>>(sp =>
+            new InMemoryWatchdogService<TService>(
+                sp.GetRequiredService<TimeProvider>(),
+                exceptionWindow(sp)));
+
         services.AddHostedService<LazarusService<TService>>(sp =>
         {
             TService inner = sp.GetRequiredService<TService>();
             ILogger<LazarusService<TService>> logger = sp.GetRequiredService<ILogger<LazarusService<TService>>>();
             TimeProvider timeProvider = sp.GetRequiredService<TimeProvider>();
-            IWatchdogService watchdog = sp.GetRequiredService<IWatchdogService>();
-            return new(loopDelay, logger, timeProvider, watchdog, inner);
+            WatchdogScopeFactory watchdog = sp.GetRequiredService<WatchdogScopeFactory>();
+            return new(loopDelay(sp), logger, timeProvider, inner, watchdog);
         });
         return services;
     }

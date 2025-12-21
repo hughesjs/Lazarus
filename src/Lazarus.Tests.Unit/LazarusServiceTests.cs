@@ -2,6 +2,7 @@ using Lazarus.Internal.Service;
 using Lazarus.Internal.Watchdog;
 using Lazarus.Public;
 using Lazarus.Public.Watchdog;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 
@@ -12,7 +13,7 @@ public class LazarusServiceTests : IAsyncDisposable
     private readonly LazarusService<TestService> _ts;
     private readonly TestService _innerService;
     private readonly FakeTimeProvider _tp;
-    private readonly IWatchdogService _watchdog;
+    private readonly IWatchdogService<TestService> _watchdog;
     private readonly CancellationToken _ctx;
 
     private readonly TimeSpan _loopTime = TimeSpan.FromSeconds(5);
@@ -20,14 +21,21 @@ public class LazarusServiceTests : IAsyncDisposable
     public LazarusServiceTests()
     {
         _tp = new();
-        _watchdog = new InMemoryWatchdogService(_tp);
+        _watchdog = new InMemoryWatchdogService<TestService>(_tp, TimeSpan.FromMinutes(5));
         _innerService = new();
+
+        ServiceCollection services = new();
+        services.AddLogging();
+        services.AddSingleton<IWatchdogService<TestService>>(_watchdog);
+        IServiceProvider serviceProvider = services.BuildServiceProvider();
+        WatchdogScopeFactory watchdogScopeFactory = new(serviceProvider, _tp);
+
         _ts = new(
             _loopTime,
             NullLogger<LazarusService<TestService>>.Instance,
             _tp,
-            _watchdog,
-            _innerService);
+            _innerService,
+            watchdogScopeFactory);
         _ctx = TestContext.Current?.Execution.CancellationToken?? CancellationToken.None;
     }
 
@@ -111,13 +119,19 @@ public class LazarusServiceTests : IAsyncDisposable
     {
         await _ts.StartAsync(_ctx);
 
+        // Need two of these to guarantee one completed execution as the first advance is the initial delay
         await AdvanceTime();
-        DateTimeOffset? firstHeartbeat = _watchdog.GetLastHeartbeat<TestService>();
-        await Assert.That(firstHeartbeat).IsNotNull();
+        await AdvanceTime();
+        Heartbeat? firstHeartbeat = _watchdog.GetLastHeartbeat();
+        await AdvanceTime();
+        Heartbeat? secondHeartbeat = _watchdog.GetLastHeartbeat();
 
-        await AdvanceTime();
-        DateTimeOffset? secondHeartbeat = _watchdog.GetLastHeartbeat<TestService>();
-        await Assert.That(secondHeartbeat!).IsNotEqualTo(firstHeartbeat);
+        using (Assert.Multiple())
+        {
+            await Assert.That(firstHeartbeat).IsNotNull();
+            await Assert.That(secondHeartbeat).IsNotNull();
+            await Assert.That(secondHeartbeat!.StartTime).IsNotEqualTo(firstHeartbeat!.StartTime);
+        }
     }
 
     private class TestService : IResilientService
