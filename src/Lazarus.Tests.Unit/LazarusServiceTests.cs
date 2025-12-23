@@ -26,7 +26,7 @@ public class LazarusServiceTests : IAsyncDisposable
 
         ServiceCollection services = new();
         services.AddLogging();
-        services.AddSingleton<IWatchdogService<TestService>>(_watchdog);
+        services.AddSingleton(_watchdog);
         IServiceProvider serviceProvider = services.BuildServiceProvider();
         WatchdogScopeFactory watchdogScopeFactory = new(serviceProvider, _tp);
 
@@ -184,6 +184,7 @@ public class LazarusServiceTests : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        await _innerService.DisposeAsync();
         await _ts.DisposeAsync();
         GC.SuppressFinalize(this);
     }

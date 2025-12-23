@@ -12,7 +12,7 @@ namespace Lazarus.Public.Configuration;
 /// </summary>
 public static class ServiceCollectionExtensions
 {
-    private const string DUPE_SERVICE_ERROR_MESSAGE = """
+    private const string DupeServiceErrorMessage = """
                                                    You can't register two Lazarus services of the same type.
                                                    If this is a feature you want, let me know on the Github repo.
                                                    """;
@@ -51,7 +51,7 @@ public static class ServiceCollectionExtensions
         // This restriction may prove unnecessary later
         if (services.Any(s => s.ServiceType == typeof(TService)))
         {
-            throw new LazarusConfigurationException(DUPE_SERVICE_ERROR_MESSAGE);
+            throw new LazarusConfigurationException(DupeServiceErrorMessage);
         }
 
         services.AddSingleton<TService>();

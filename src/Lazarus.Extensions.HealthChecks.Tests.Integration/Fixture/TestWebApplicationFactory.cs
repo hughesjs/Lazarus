@@ -3,7 +3,6 @@ using Lazarus.Extensions.HealthChecks.Public;
 using Lazarus.Public.Configuration;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.Configuration;
 
 namespace Lazarus.Extensions.HealthChecks.Tests.Integration.Fixture;
 

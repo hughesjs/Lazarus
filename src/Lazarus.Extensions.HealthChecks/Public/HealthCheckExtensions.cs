@@ -1,7 +1,6 @@
 using Lazarus.Extensions.HealthChecks.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Lazarus.Extensions.HealthChecks.Public;
 

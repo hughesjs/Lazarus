@@ -1,7 +1,6 @@
 using Lazarus.Extensions.HealthChecks.Internal;
 using Lazarus.Extensions.HealthChecks.Public;
 using Lazarus.Internal.Watchdog;
-using Lazarus.Public.Watchdog;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Time.Testing;
 
