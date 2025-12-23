@@ -1,11 +1,9 @@
 <Solution>
   <Folder Name="/Core/">
-    <Project Path="Lazarus.Tests.Architecture/Lazarus.Tests.Architecture.csproj" />
     <Project Path="Lazarus.Tests.Unit\Lazarus.Tests.Unit.csproj" />
     <Project Path="Lazarus/Lazarus.csproj" />
   </Folder>
   <Folder Name="/HealthChecks/">
-    <Project Path="Lazarus.Extensions.HealthChecks.Tests.Architecture/Lazarus.Extensions.HealthChecks.Tests.Architecture.csproj" />
     <Project Path="Lazarus.Extensions.HealthChecks.Tests.Unit/Lazarus.Extensions.HealthChecks.Tests.Unit.csproj" />
     <Project Path="Lazarus.Extensions.HealthChecks.Tests.Integration/Lazarus.Extensions.HealthChecks.Tests.Integration.csproj" />
     <Project Path="Lazarus.Extensions.HealthChecks\Lazarus.Extensions.HealthChecks.csproj" />
