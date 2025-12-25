@@ -31,13 +31,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ArchonAnalysers" Version="0.3.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.1" />
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="Lazarus.Tests.Unit"/>
-    <InternalsVisibleTo Include="Lazarus.Extensions.HealthChecks.Tests.Unit"/>
-    <InternalsVisibleTo Include="Lazarus.Extensions.HealthChecks.Tests.Integration"/>
+    <InternalsVisibleTo Include="Lazarus.Tests.Unit" />
+    <InternalsVisibleTo Include="Lazarus.Extensions.HealthChecks.Tests.Unit" />
+    <InternalsVisibleTo Include="Lazarus.Extensions.HealthChecks.Tests.Integration" />
   </ItemGroup>
 
   <ItemGroup>

@@ -71,14 +71,10 @@ jobs:
         include:
           - test-name: "Lazarus Unit Tests"
             test-project: "Lazarus.Tests.Unit"
-          - test-name: "Lazarus Architecture Tests"
-            test-project: "Lazarus.Tests.Architecture"
           - test-name: "HealthChecks Unit Tests"
             test-project: "Lazarus.Extensions.HealthChecks.Tests.Unit"
           - test-name: "HealthChecks Integration Tests"
             test-project: "Lazarus.Extensions.HealthChecks.Tests.Integration"
-          - test-name: "HealthChecks Architecture Tests"
-            test-project: "Lazarus.Extensions.HealthChecks.Tests.Architecture"
     steps:
       - name: Download Build Artifacts
         uses: actions/download-artifact@v7
