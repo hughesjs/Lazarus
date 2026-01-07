@@ -2,7 +2,9 @@
 
 [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/hughesjs/Lazarus/cd-pipeline.yml?label=BUILD%20CD&style=for-the-badge&branch=master)](https://github.com/hughesjs/Lazarus/actions)
 [![Nuget (with prereleases)](https://img.shields.io/nuget/vpre/Lazarus?style=for-the-badge&label=Lazarus)](https://nuget.org/packages/Lazarus)
+[![Lazarus Downloads](https://img.shields.io/nuget/dt/Lazarus?style=for-the-badge&label=Lazarus%20Downloads)](https://www.nuget.org/packages/Lazarus/)
 [![Nuget (with prereleases)](https://img.shields.io/nuget/vpre/Lazarus.Extensions.HealthChecks?style=for-the-badge&label=HealthChecks)](https://nuget.org/packages/Lazarus.Extensions.HealthChecks)
+[![Healthchecks Downloads](https://img.shields.io/nuget/dt/Lazarus.Extensions.HealthChecks?style=for-the-badge&label=Healthchecks%20Downloads)](https://www.nuget.org/packages/Lazarus.Extensions.HealthChecks/)
 ![GitHub top language](https://img.shields.io/github/languages/top/hughesjs/Lazarus?style=for-the-badge)
 [![GitHub](https://img.shields.io/github/license/hughesjs/Lazarus?style=for-the-badge)](LICENSE)
 ![FTB](https://raw.githubusercontent.com/hughesjs/custom-badges/master/made-in/made-in-scotland.svg)
