@@ -77,7 +77,7 @@ jobs:
             test-project: "Lazarus.Extensions.HealthChecks.Tests.Integration"
     steps:
       - name: Download Build Artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: build-output
           path: ./build
@@ -108,7 +108,7 @@ jobs:
             project-path: "Lazarus.Extensions.HealthChecks/Lazarus.Extensions.HealthChecks.csproj"
     steps:
       - name: Download Build Artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: build-output
           path: ./build
