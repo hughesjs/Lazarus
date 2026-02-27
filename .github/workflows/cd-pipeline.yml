@@ -90,7 +90,7 @@ jobs:
             package-artifact-name: "healthchecks-package-output"
     steps:
       - name: Download Solution Build
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: solution-build-output
           path: ./src
@@ -141,7 +141,7 @@ jobs:
           dotnet-quality: "preview"
 
       - name: Download Solution Build
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: solution-build-output
           path: ./src
@@ -189,13 +189,13 @@ jobs:
           writeToFile: false
 
       - name: Download Lazarus Package
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: lazarus-package-output
           path: ./artifacts
 
       - name: Download HealthChecks Package
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: healthchecks-package-output
           path: ./artifacts
@@ -220,13 +220,13 @@ jobs:
       - package-library
     steps:
       - name: Download Lazarus Package
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: lazarus-package-output
           path: ./artifacts
 
       - name: Download HealthChecks Package
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: healthchecks-package-output
           path: ./artifacts
