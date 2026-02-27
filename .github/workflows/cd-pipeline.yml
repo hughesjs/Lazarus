@@ -67,7 +67,7 @@ jobs:
         run: dotnet build Lazarus.slnx --configuration Release --no-restore /p:Version=${{ needs.version.outputs.version }}
 
       - name: Upload Solution Build Artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: solution-build-output
           path: ./src
@@ -115,7 +115,7 @@ jobs:
             /p:DebugSymbols=false
 
       - name: Upload ${{ matrix.library-name }} Package Artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.package-artifact-name }}
           path: ./src/artifacts/*.nupkg
